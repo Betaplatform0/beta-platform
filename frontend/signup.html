@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Beta | إنشاء حساب</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <div class="brand" style="text-align:center;display:block;">Beta</div>
+      <h1>إنشاء حساب جديد</h1>
+      <p class="auth-sub">سيتم مراجعة حسابك قبل التفعيل</p>
+
+      <form id="signupForm">
+        <div class="field">
+          <label>الاسم الكامل</label>
+          <input type="text" id="fullName" required />
+        </div>
+        <div class="field">
+          <label>رقم الهاتف</label>
+          <input type="tel" id="phone" placeholder="01xxxxxxxxx" required />
+        </div>
+        <div class="field">
+          <label>رقم الجلوس</label>
+          <input type="text" id="seatNumber" required />
+        </div>
+        <div class="field">
+          <label>كلمة المرور</label>
+          <input type="password" id="password" minlength="6" required />
+        </div>
+        <div class="field">
+          <label>تأكيد كلمة المرور</label>
+          <input type="password" id="confirmPassword" minlength="6" required />
+        </div>
+        <button type="submit" class="btn" id="signupBtn">إنشاء الحساب</button>
+        <div class="msg" id="msg"></div>
+      </form>
+
+      <div class="switch-link">
+        لديك حساب بالفعل؟ <a href="index.html">تسجيل الدخول</a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      auth, db, createUserWithEmailAndPassword, doc, setDoc, getDocs, collection,
+      phoneToPseudoEmail, serverTimestamp, signOut, BACKEND_URL
+    } from "./js/firebase-config.js";
+
+    const form = document.getElementById("signupForm");
+    const msg = document.getElementById("msg");
+    const btn = document.getElementById("signupBtn");
+
+    function showMsg(text, type) {
+      msg.textContent = text;
+      msg.className = "msg " + (type || "");
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      btn.disabled = true;
+
+      const fullName = document.getElementById("fullName").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const seatNumber = document.getElementById("seatNumber").value.trim();
+      const password = document.getElementById("password").value;
+      const confirmPassword = document.getElementById("confirmPassword").value;
+
+      if (password !== confirmPassword) {
+        showMsg("كلمتا المرور غير متطابقتين.", "error");
+        btn.disabled = false;
+        return;
+      }
+
+      const email = phoneToPseudoEmail(phone);
+
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        const user = cred.user;
+
+        // -------------------------------------------------------------
+        // تحديد ما إذا كان هذا أول حساب على الإطلاق (Owner)
+        // يتم ذلك حصريًا عبر الـ Backend (وليس مباشرة من الفرونت إند)
+        // لمنع أي محاولة تحايل من المستخدم على قواعد Firestore.
+        // الـ Backend يستخدم Firebase Admin SDK للتحقق الحقيقي من
+        // عدد المستخدمين الحاليين قبل منح role=owner.
+        // -------------------------------------------------------------
+        const idToken = await user.getIdToken();
+        const res = await fetch(`${BACKEND_URL}/api/auth/register-profile`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({ fullName, phone, seatNumber }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message || "تعذر إنشاء الملف الشخصي");
+        }
+
+        const result = await res.json();
+
+        await signOut(auth);
+
+        if (result.role === "owner") {
+          showMsg("تم إنشاء حسابك كمالك للمنصة بنجاح. يمكنك الآن تسجيل الدخول.", "success");
+        } else {
+          showMsg("تم إنشاء الحساب بنجاح، بانتظار تفعيله من الإدارة.", "success");
+        }
+
+        setTimeout(() => (window.location.href = "index.html"), 2200);
+      } catch (err) {
+        console.error(err);
+        showMsg(err.message || "حدث خطأ أثناء إنشاء الحساب.", "error");
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
