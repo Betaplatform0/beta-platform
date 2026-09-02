@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Beta | لوحة التحكم</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <span class="brand">Beta</span>
+      <div class="nav-item active" data-tab="home">🏠 الرئيسية</div>
+      <div class="nav-item" data-tab="accounts">👥 الحسابات</div>
+      <div class="nav-item" data-tab="folders">📁 الفولدرات</div>
+      <div class="nav-item" data-tab="files">📄 الملفات</div>
+      <div class="nav-item" data-tab="permissions">🔐 الصلاحيات</div>
+      <div class="nav-item" data-tab="devices">📱 الأجهزة</div>
+      <div class="nav-item" onclick="betaLogout()">🚪 تسجيل الخروج</div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <h2 id="welcomeText">مرحبًا 👋</h2>
+      </div>
+
+      <!-- الرئيسية -->
+      <section id="tab-home">
+        <div class="stat-grid">
+          <div class="stat-card"><div class="num" id="statStudents">-</div><div class="label">إجمالي الطلاب</div></div>
+          <div class="stat-card"><div class="num" id="statActive">-</div><div class="label">حسابات مفعّلة</div></div>
+          <div class="stat-card"><div class="num" id="statPending">-</div><div class="label">حسابات معلّقة</div></div>
+          <div class="stat-card"><div class="num" id="statAdmins">-</div><div class="label">عدد الأدمن</div></div>
+          <div class="stat-card"><div class="num" id="statFolders">-</div><div class="label">الفولدرات</div></div>
+          <div class="stat-card"><div class="num" id="statFiles">-</div><div class="label">الملفات</div></div>
+        </div>
+      </section>
+
+      <!-- الحسابات -->
+      <section id="tab-accounts" style="display:none;">
+        <div class="card">
+          <table>
+            <thead>
+              <tr><th>الاسم</th><th>الهاتف</th><th>رقم الجلوس</th><th>الدور</th><th>الحالة</th><th>إجراءات</th></tr>
+            </thead>
+            <tbody id="accountsTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- الفولدرات -->
+      <section id="tab-folders" style="display:none;">
+        <div class="card">
+          <div style="display:flex;gap:10px;margin-bottom:16px;">
+            <input type="text" id="newFolderName" placeholder="اسم الفولدر الجديد" style="flex:1;padding:10px;border-radius:8px;border:1.5px solid var(--border);">
+            <button class="btn" style="width:auto;" id="addFolderBtn">إضافة فولدر</button>
+          </div>
+          <div class="folder-grid" id="folderGrid"></div>
+        </div>
+      </section>
+
+      <!-- الملفات -->
+      <section id="tab-files" style="display:none;">
+        <div class="card">
+          <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+            <select id="uploadFolderSelect" style="padding:10px;border-radius:8px;border:1.5px solid var(--border);"></select>
+            <input type="file" id="uploadFileInput" accept="application/pdf" />
+            <button class="btn" style="width:auto;" id="uploadBtn">رفع الملف</button>
+          </div>
+          <div id="uploadMsg" class="msg"></div>
+          <div class="file-list" id="filesList"></div>
+        </div>
+      </section>
+
+      <!-- الصلاحيات -->
+      <section id="tab-permissions" style="display:none;">
+        <div class="card">
+          <label>اختر طالبًا</label>
+          <select id="permStudentSelect" style="padding:10px;border-radius:8px;border:1.5px solid var(--border);width:100%;margin:10px 0;"></select>
+          <div id="permFoldersList"></div>
+          <button class="btn" style="width:auto;margin-top:14px;" id="savePermsBtn">حفظ الصلاحيات</button>
+          <div id="permMsg" class="msg"></div>
+        </div>
+      </section>
+
+      <!-- الأجهزة -->
+      <section id="tab-devices" style="display:none;">
+        <div class="card">
+          <table>
+            <thead><tr><th>المستخدم</th><th>معرّف الجهاز</th><th>وقت الربط</th><th>إجراء</th></tr></thead>
+            <tbody id="devicesTable"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="js/dashboard.js"></script>
+</body>
+</html>
