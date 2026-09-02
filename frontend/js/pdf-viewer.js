@@ -1,0 +1,87 @@
+import { BACKEND_URL } from "./firebase-config.js";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+let pdfDoc = null;
+let currentPage = 1;
+let currentScale = 1.3;
+
+const overlay = document.getElementById("pdfOverlay");
+const canvas = document.getElementById("pdfCanvas");
+const ctx = canvas.getContext("2d");
+const pageInfo = document.getElementById("pageInfo");
+const watermarkLayer = document.getElementById("watermarkLayer");
+
+export async function openPdfViewer(fileId, user) {
+  overlay.style.display = "flex";
+  buildWatermark(user);
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/files/${fileId}/stream`, {
+      headers: { Authorization: `Bearer ${user.idToken}` },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      alert(err.message || "لا يمكن فتح هذا الملف.");
+      closeViewer();
+      return;
+    }
+    const buffer = await res.arrayBuffer();
+    pdfDoc = await pdfjsLib.getDocument({ data: buffer }).promise;
+    currentPage = 1;
+    renderPage(currentPage);
+  } catch (err) {
+    console.error(err);
+    alert("تعذر تحميل الملف.");
+    closeViewer();
+  }
+}
+
+function buildWatermark(user) {
+  const label = `${user.fullName} - ${user.seatNumber}`;
+  const cells = Array.from({ length: 18 }, () => `<span>${label}</span>`).join("");
+  watermarkLayer.innerHTML = cells;
+}
+
+async function renderPage(num) {
+  const page = await pdfDoc.getPage(num);
+  const viewport = page.getViewport({ scale: currentScale });
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  pageInfo.textContent = `صفحة ${num} / ${pdfDoc.numPages}`;
+}
+
+document.getElementById("prevPage").addEventListener("click", () => {
+  if (currentPage > 1) { currentPage--; renderPage(currentPage); }
+});
+document.getElementById("nextPage").addEventListener("click", () => {
+  if (pdfDoc && currentPage < pdfDoc.numPages) { currentPage++; renderPage(currentPage); }
+});
+document.getElementById("zoomIn").addEventListener("click", () => { currentScale += 0.2; renderPage(currentPage); });
+document.getElementById("zoomOut").addEventListener("click", () => {
+  currentScale = Math.max(0.5, currentScale - 0.2);
+  renderPage(currentPage);
+});
+document.getElementById("fullscreenBtn").addEventListener("click", () => {
+  if (overlay.requestFullscreen) overlay.requestFullscreen();
+});
+document.getElementById("closeViewer").addEventListener("click", closeViewer);
+
+function closeViewer() {
+  overlay.style.display = "none";
+  pdfDoc = null;
+}
+
+// -------- حماية إضافية داخل العارض (وليست الحماية الأساسية) --------
+overlay.addEventListener("contextmenu", (e) => e.preventDefault());
+overlay.addEventListener("keydown", (e) => {
+  // منع اختصارات الطباعة/الحفظ/تحديد الكل الشائعة
+  const blocked = (e.ctrlKey || e.metaKey) && ["p", "s", "u", "c", "a"].includes(e.key.toLowerCase());
+  if (blocked) e.preventDefault();
+});
+document.addEventListener("keydown", (e) => {
+  if (overlay.style.display !== "flex") return;
+  const blocked = (e.ctrlKey || e.metaKey) && ["p", "s", "u", "c", "a"].includes(e.key.toLowerCase());
+  if (blocked) e.preventDefault();
+});
