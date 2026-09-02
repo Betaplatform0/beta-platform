@@ -1,0 +1,97 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function myDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function myRole() {
+      return isSignedIn() ? myDoc().data.role : 'guest';
+    }
+
+    function myStatus() {
+      return isSignedIn() ? myDoc().data.status : 'none';
+    }
+
+    function isOwner() {
+      return isSignedIn() && myRole() == 'owner';
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (myRole() == 'admin' || myRole() == 'owner');
+    }
+
+    function isActive() {
+      return isSignedIn() && myStatus() == 'active';
+    }
+
+    // ============ users ============
+    match /users/{userId} {
+
+      // أي مستخدم مسجل دخول يمكنه قراءة بياناته فقط، والمالك/الأدمن يقرأ الجميع
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+
+      // إنشاء الحساب: يسمح فقط بإنشاء مستند بنفس uid المستخدم الحالي (create من صفحة التسجيل)
+      // الحقول role/status تُفرض من الكود على أنها 'student' / 'pending' فقط عبر الشرط التالي
+      allow create: if isSignedIn()
+                    && request.auth.uid == userId
+                    && request.resource.data.role == 'student'
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.deviceId == null;
+
+      // التحديث:
+      // - المستخدم نفسه: يمكنه فقط تحديث حقول غير حساسة (لن نسمح له بتعديل role/status/deviceId)
+      // - الأدمن/المالك: يمكنهم تعديل status و role (بشرط عدم لمس Owner والحماية أدناه)
+      allow update: if isSignedIn() && (
+        (
+          request.auth.uid == userId &&
+          request.resource.data.role == resource.data.role &&
+          request.resource.data.status == resource.data.status &&
+          request.resource.data.deviceId == resource.data.deviceId
+        )
+        ||
+        (
+          isAdmin() &&
+          // لا أحد يستطيع تحويل نفسه إلى Owner أو التلاعب بحساب Owner
+          resource.data.role != 'owner' &&
+          request.resource.data.role != 'owner' &&
+          // الأدمن (وليس Owner) لا يستطيع منح صلاحية admin لغيره
+          (myRole() == 'owner' || request.resource.data.role == resource.data.role || request.resource.data.role == 'student')
+        )
+      );
+
+      // الحذف: للمالك فقط، ولا يمكن حذف حساب Owner
+      allow delete: if isOwner() && resource.data.role != 'owner';
+    }
+
+    // ============ folders ============
+    match /folders/{folderId} {
+      allow read: if isSignedIn() && isActive();
+      allow write: if isOwner();
+    }
+
+    // ============ files (metadata only – الملفات نفسها على السيرفر لا في Firestore) ============
+    match /files/{fileId} {
+      allow read: if isSignedIn() && isActive();
+      allow write: if isOwner();
+    }
+
+    // ============ permissions: أي فولدرات مسموحة لكل طالب ============
+    match /permissions/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow write: if isOwner();
+    }
+
+    // ============ devices: سجل الأجهزة (owner فقط يقرأ/يكتب مباشرة، الباقي عبر Backend) ============
+    match /devices/{userId} {
+      allow read: if isAdmin() || request.auth.uid == userId;
+      allow write: if isOwner();
+    }
+  }
+}
