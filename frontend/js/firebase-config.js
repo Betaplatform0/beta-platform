@@ -54,7 +54,7 @@ export {
 };
 
 // عنوان الـ Backend الخاص برفع/حماية الملفات (Node/Express) - غيّره بعد النشر
-export const BACKEND_URL = "https://your-backend-domain.com";
+export const BACKEND_URL = "https://betaplatform-yousef2026.bonto.run/";
 
 // -----------------------------------------------------------------
 // Firebase Auth لا يدعم تسجيل الدخول برقم الهاتف + كلمة سر مباشرة،
