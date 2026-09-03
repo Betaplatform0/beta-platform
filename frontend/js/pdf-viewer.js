@@ -30,43 +30,11 @@ export async function openPdfViewer(fileId, user) {
     pdfDoc = await pdfjsLib.getDocument({ data: buffer }).promise;
     currentPage = 1;
 
-    // حساب حجم يناسب عرض الشاشة تلقائيًا
     const firstPage = await pdfDoc.getPage(1);
     const naturalViewport = firstPage.getViewport({ scale: 1 });
     const wrapWidth = document.getElementById("pdfCanvasWrap").clientWidth - 40;
     currentScale = wrapWidth / naturalViewport.width;
 
-    renderPage(currentPage);
-  } catch (err) {
-    console.error(err);
-    alert("تعذر تحميل الملف.");
-    closeViewer();
-  }
-}
-      return;
-    }
-    const buffer = await res.arrayBuffer();
-    pdfDoc = await pdfjsLib.getDocument({ data: buffer }).promise;
-    currentPage = 1;
-
-    // حساب حجم يناسب عرض الشاشة تلقائيًا
-    const firstPage = await pdfDoc.getPage(1);
-    const naturalViewport = firstPage.getViewport({ scale: 1 });
-    const wrapWidth = document.getElementById("pdfCanvasWrap").clientWidth - 40;
-    currentScale = wrapWidth / naturalViewport.width;
-
-    renderPage(currentPage);
-  } catch (err) {
-    console.error(err);
-    alert("تعذر تحميل الملف.");
-    closeViewer();
-  }
-}
-      return;
-    }
-    const buffer = await res.arrayBuffer();
-    pdfDoc = await pdfjsLib.getDocument({ data: buffer }).promise;
-    currentPage = 1;
     renderPage(currentPage);
   } catch (err) {
     console.error(err);
@@ -77,7 +45,7 @@ export async function openPdfViewer(fileId, user) {
 
 function buildWatermark(user) {
   const label = `${user.fullName} - ${user.seatNumber}`;
-  const cells = Array.from({ length: 18 }, () => `<span>${label}</span>`).join("");
+  const cells = Array.from({ length: 12 }, () => `<span>${label}</span>`).join("");
   watermarkLayer.innerHTML = cells;
 }
 
@@ -111,10 +79,8 @@ function closeViewer() {
   pdfDoc = null;
 }
 
-// -------- حماية إضافية داخل العارض (وليست الحماية الأساسية) --------
 overlay.addEventListener("contextmenu", (e) => e.preventDefault());
 overlay.addEventListener("keydown", (e) => {
-  // منع اختصارات الطباعة/الحفظ/تحديد الكل الشائعة
   const blocked = (e.ctrlKey || e.metaKey) && ["p", "s", "u", "c", "a"].includes(e.key.toLowerCase());
   if (blocked) e.preventDefault();
 });
