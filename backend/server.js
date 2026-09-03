@@ -10,16 +10,20 @@ const admin = require("firebase-admin");
 // يدعم طريقتين: ملف serviceAccountKey.json محليًا، أو متغيّر بيئة
 // FIREBASE_SERVICE_ACCOUNT_JSON يحتوي محتوى الملف كنص JSON (للاستضافة)
 // -----------------------------------------------------------------
-let serviceAccount;
-if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+let credential;
+if (process.env.FIREBASE_PK_1 && process.env.FIREBASE_PK_2) {
+  const privateKey = (process.env.FIREBASE_PK_1 + process.env.FIREBASE_PK_2).replace(/\\n/g, "\n");
+  credential = admin.credential.cert({
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey,
+  });
+} else if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+  credential = admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON));
 } else {
-  serviceAccount = require("./serviceAccountKey.json");
+  credential = admin.credential.cert(require("./serviceAccountKey.json"));
 }
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
+admin.initializeApp({ credential });
 
 const app = express();
 
