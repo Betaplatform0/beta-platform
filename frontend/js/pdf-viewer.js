@@ -17,13 +17,32 @@ export async function openPdfViewer(fileId, user) {
   buildWatermark(user);
 
   try {
-    const res = await fetch(${BACKEND_URL}/api/files/${fileId}/stream, {
-      headers: { Authorization: Bearer ${user.idToken} },
+    const res = await fetch(`${BACKEND_URL}/api/files/${fileId}/stream`, {
+      headers: { Authorization: `Bearer ${user.idToken}` },
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       alert(err.message || "لا يمكن فتح هذا الملف.");
       closeViewer();
+      return;
+    }
+    const buffer = await res.arrayBuffer();
+    pdfDoc = await pdfjsLib.getDocument({ data: buffer }).promise;
+    currentPage = 1;
+
+    // حساب حجم يناسب عرض الشاشة تلقائيًا
+    const firstPage = await pdfDoc.getPage(1);
+    const naturalViewport = firstPage.getViewport({ scale: 1 });
+    const wrapWidth = document.getElementById("pdfCanvasWrap").clientWidth - 40;
+    currentScale = wrapWidth / naturalViewport.width;
+
+    renderPage(currentPage);
+  } catch (err) {
+    console.error(err);
+    alert("تعذر تحميل الملف.");
+    closeViewer();
+  }
+}
       return;
     }
     const buffer = await res.arrayBuffer();
