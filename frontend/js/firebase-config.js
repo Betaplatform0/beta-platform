@@ -1,6 +1,5 @@
 // =====================================================
 // إعدادات Firebase - Beta Platform
-// ضع بيانات مشروعك من Firebase Console > Project Settings
 // =====================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
@@ -25,12 +24,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "PUT_YOUR_API_KEY_HERE",
-  authDomain: "PUT_YOUR_PROJECT.firebaseapp.com",
-  projectId: "PUT_YOUR_PROJECT_ID",
-  storageBucket: "PUT_YOUR_PROJECT.appspot.com",
-  messagingSenderId: "PUT_SENDER_ID",
-  appId: "PUT_APP_ID",
+  apiKey: "AIzaSyBzLDq9PqC5iYLD-mMlpLylkRBhDh5SuEU",
+  authDomain: "beta-platform-d3f84.firebaseapp.com",
+  projectId: "beta-platform-d3f84",
+  storageBucket: "beta-platform-d3f84.firebasestorage.app",
+  messagingSenderId: "833275620854",
+  appId: "1:833275620854:web:e8d4149d4a09fcbee7ebd7",
 };
 
 export const app = initializeApp(firebaseConfig);
