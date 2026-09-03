@@ -190,10 +190,10 @@ th { color: var(--muted); font-weight: 700; }
 .pdf-canvas-wrap { flex: 1; overflow: auto; display: flex; justify-content: center; position: relative; user-select: none; }
 .watermark-layer {
   position: absolute; inset: 0; pointer-events: none; overflow: hidden;
-  display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 180px;
-  opacity: 0.16; transform: rotate(-28deg) scale(1.3);
+  display: grid; grid-template-columns: repeat(2, 1fr); grid-auto-rows: 260px;
+  opacity: 0.22; transform: rotate(-28deg) scale(1.3);
 }
-.watermark-layer span { font-size: 13px; color: #000; white-space: nowrap; text-align: center; align-self: center; }
+.watermark-layer span { font-size: 22px; font-weight: 700; color: #000; white-space: nowrap; text-align: center; align-self: center; }
 
 @media (max-width: 860px) {
   .app-shell { flex-direction: column; }
