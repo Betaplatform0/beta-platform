@@ -7,11 +7,16 @@ const admin = require("firebase-admin");
 
 // -----------------------------------------------------------------
 // تهيئة Firebase Admin SDK
-// حمّل ملف Service Account من Firebase Console > Project Settings >
-// Service Accounts > Generate New Private Key، واحفظه باسم
-// serviceAccountKey.json بجانب هذا الملف (ولا ترفعه إلى GitHub!)
+// يدعم طريقتين: ملف serviceAccountKey.json محليًا، أو متغيّر بيئة
+// FIREBASE_SERVICE_ACCOUNT_JSON يحتوي محتوى الملف كنص JSON (للاستضافة)
 // -----------------------------------------------------------------
-const serviceAccount = require("./serviceAccountKey.json");
+let serviceAccount;
+if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+} else {
+  serviceAccount = require("./serviceAccountKey.json");
+}
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
@@ -21,15 +26,14 @@ const app = express();
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.ALLOWED_ORIGIN || "*", // في الإنتاج: ضع دومين الموقع فقط
+    origin: process.env.ALLOWED_ORIGIN || "*",
     credentials: true,
   })
 );
 app.use(express.json());
 
-// حماية من محاولات تسجيل الدخول/التسجيل المتكررة (Rate Limiting)
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 دقيقة
+  windowMs: 15 * 60 * 1000,
   max: 30,
   message: { message: "محاولات كثيرة جدًا، الرجاء المحاولة لاحقًا." },
 });
@@ -42,7 +46,6 @@ const generalLimiter = rateLimit({
 });
 app.use("/api", generalLimiter);
 
-// المسارات
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/device", require("./routes/device"));
 app.use("/api/upload", require("./routes/upload"));
