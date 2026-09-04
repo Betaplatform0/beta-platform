@@ -7,20 +7,17 @@ const db = () => admin.firestore();
 
 // ================= الحسابات =================
 
-// قائمة كل الحسابات - owner/admin
 router.get("/accounts", requireAuth, requireActive, requireAdmin, async (req, res) => {
   const snap = await db().collection("users").get();
   const accounts = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   return res.json({ accounts });
 });
 
-// تفعيل حساب - owner/admin
 router.post("/accounts/:id/activate", requireAuth, requireActive, requireAdmin, async (req, res) => {
   await db().collection("users").doc(req.params.id).update({ status: "active" });
   return res.json({ ok: true });
 });
 
-// تعطيل حساب - owner/admin (لا يمكن تعطيل owner)
 router.post("/accounts/:id/disable", requireAuth, requireActive, requireAdmin, async (req, res) => {
   const target = await db().collection("users").doc(req.params.id).get();
   if (!target.exists) return res.status(404).json({ message: "الحساب غير موجود." });
@@ -30,7 +27,6 @@ router.post("/accounts/:id/disable", requireAuth, requireActive, requireAdmin, a
   return res.json({ ok: true });
 });
 
-// حذف حساب - owner فقط
 router.delete("/accounts/:id", requireAuth, requireActive, requireOwner, async (req, res) => {
   const target = await db().collection("users").doc(req.params.id).get();
   if (!target.exists) return res.status(404).json({ message: "الحساب غير موجود." });
@@ -43,7 +39,6 @@ router.delete("/accounts/:id", requireAuth, requireActive, requireOwner, async (
   return res.json({ ok: true });
 });
 
-// جعل مستخدم Admin - owner فقط
 router.post("/accounts/:id/make-admin", requireAuth, requireActive, requireOwner, async (req, res) => {
   const target = await db().collection("users").doc(req.params.id).get();
   if (!target.exists) return res.status(404).json({ message: "الحساب غير موجود." });
@@ -53,7 +48,6 @@ router.post("/accounts/:id/make-admin", requireAuth, requireActive, requireOwner
   return res.json({ ok: true });
 });
 
-// إزالة صلاحية Admin - owner فقط
 router.post("/accounts/:id/remove-admin", requireAuth, requireActive, requireOwner, async (req, res) => {
   const target = await db().collection("users").doc(req.params.id).get();
   if (!target.exists) return res.status(404).json({ message: "الحساب غير موجود." });
@@ -63,7 +57,7 @@ router.post("/accounts/:id/remove-admin", requireAuth, requireActive, requireOwn
   return res.json({ ok: true });
 });
 
-// ================= الفولدرات =================
+// ================= الفولدرات (عامة / خاصة) =================
 
 router.get("/folders", requireAuth, requireActive, async (req, res) => {
   const snap = await db().collection("folders").orderBy("createdAt", "asc").get();
@@ -72,19 +66,24 @@ router.get("/folders", requireAuth, requireActive, async (req, res) => {
 });
 
 router.post("/folders", requireAuth, requireActive, requireOwner, async (req, res) => {
-  const { name } = req.body;
+  const { name, type } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ message: "اسم الفولدر مطلوب." });
+  const folderType = type === "public" ? "public" : "private";
   const docRef = await db().collection("folders").add({
     name: name.trim(),
+    type: folderType,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
   return res.json({ ok: true, id: docRef.id });
 });
 
 router.put("/folders/:id", requireAuth, requireActive, requireOwner, async (req, res) => {
-  const { name } = req.body;
-  if (!name || !name.trim()) return res.status(400).json({ message: "اسم الفولدر مطلوب." });
-  await db().collection("folders").doc(req.params.id).update({ name: name.trim() });
+  const { name, type } = req.body;
+  const updates = {};
+  if (name && name.trim()) updates.name = name.trim();
+  if (type === "public" || type === "private") updates.type = type;
+  if (Object.keys(updates).length === 0) return res.status(400).json({ message: "لا توجد بيانات للتحديث." });
+  await db().collection("folders").doc(req.params.id).update(updates);
   return res.json({ ok: true });
 });
 
@@ -102,21 +101,18 @@ router.delete("/folders/:id", requireAuth, requireActive, requireOwner, async (r
   return res.json({ ok: true });
 });
 
-// ================= صلاحيات الطلاب =================
+// ================= صلاحيات الطلاب (للفولدرات الخاصة فقط) =================
 
-// يجلب الطالب صلاحياته الخاصة فقط (يجب أن يسبق مسار :userId في التعريف)
 router.get("/permissions/me", requireAuth, requireActive, async (req, res) => {
   const snap = await db().collection("permissions").doc(req.betaUser.uid).get();
   return res.json({ allowedFolders: snap.exists ? snap.data().allowedFolders || [] : [] });
 });
 
-// جلب الفولدرات المسموحة لطالب معيّن - owner/admin
 router.get("/permissions/:userId", requireAuth, requireActive, requireAdmin, async (req, res) => {
   const snap = await db().collection("permissions").doc(req.params.userId).get();
   return res.json({ allowedFolders: snap.exists ? snap.data().allowedFolders || [] : [] });
 });
 
-// تحديث الفولدرات المسموحة لطالب - owner/admin
 router.put("/permissions/:userId", requireAuth, requireActive, requireAdmin, async (req, res) => {
   const { allowedFolders } = req.body;
   if (!Array.isArray(allowedFolders)) {
@@ -155,8 +151,23 @@ router.get("/stats", requireAuth, requireActive, requireAdmin, async (req, res) 
 // ================= بيانات الأجهزة =================
 
 router.get("/devices", requireAuth, requireActive, requireAdmin, async (req, res) => {
-  const snap = await db().collection("devices").get();
-  const devices = snap.docs.map((d) => ({ userId: d.id, ...d.data() }));
+  const devicesSnap = await db().collection("devices").get();
+  const usersSnap = await db().collection("users").get();
+  const usersMap = {};
+  usersSnap.docs.forEach((d) => (usersMap[d.id] = d.data()));
+
+  const devices = devicesSnap.docs.map((d) => {
+    const data = d.data();
+    const user = usersMap[d.id] || {};
+    return {
+      userId: d.id,
+      userName: user.fullName || "-",
+      deviceId: data.deviceId,
+      userAgent: data.userAgent || null,
+      linkedAt: data.linkedAt || null,
+    };
+  });
+
   return res.json({ devices });
 });
 
