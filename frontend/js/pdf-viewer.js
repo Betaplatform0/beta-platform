@@ -55,7 +55,16 @@ export async function openPdfViewer(fileId, user) {
       return;
     }
     const buffer = await res.arrayBuffer();
-    pdfDoc = await pdfjsLib.getDocument({ data: buffer }).promise;
+
+    pdfDoc = await pdfjsLib.getDocument({
+      data: buffer,
+      cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",
+      cMapPacked: true,
+      standardFontDataUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/standard_fonts/",
+      disableFontFace: false,
+      useSystemFonts: true,
+    }).promise;
+
     currentPage = 1;
 
     const firstPage = await pdfDoc.getPage(1);
@@ -73,7 +82,7 @@ export async function openPdfViewer(fileId, user) {
 
 function buildWatermark(user) {
   const label = `${user.fullName} - ${user.seatNumber}`;
-  const cells = Array.from({ length: 12 }, () => `<span>${label}</span>`).join("");
+  const cells = Array.from({ length: 40 }, () => `<span>${label}</span>`).join("");
   watermarkLayer.innerHTML = cells;
 }
 
