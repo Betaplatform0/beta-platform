@@ -6,7 +6,7 @@ const pageInfo = document.getElementById("pageInfo");
 const watermarkLayer = document.getElementById("watermarkLayer");
 
 let focusShield = null;
-let iframeEl = null;
+let embedEl = null;
 let currentObjectUrl = null;
 
 function ensureFocusShield() {
@@ -27,17 +27,18 @@ function showContentAgain() {
   if (focusShield) focusShield.style.display = "none";
 }
 
+// نعتمد فقط على visibilitychange (التبديل الفعلي لتطبيق/تبويب تاني)
+// وليس blur (بيحصل بسهولة من غير خطورة حقيقية، زي فتح Keyboard أو نافذة نظام مؤقتة)
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) hideContentForSafety();
   else showContentAgain();
 });
-window.addEventListener("blur", hideContentForSafety);
-window.addEventListener("focus", showContentAgain);
 
 export async function openPdfViewer(fileId, user) {
   overlay.style.display = "flex";
   buildWatermark(user);
   ensureFocusShield();
+  showContentAgain();
   pageInfo.textContent = "جارٍ التحميل...";
 
   try {
@@ -55,12 +56,13 @@ export async function openPdfViewer(fileId, user) {
     if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
     currentObjectUrl = URL.createObjectURL(blob);
 
-    if (iframeEl) iframeEl.remove();
-    iframeEl = document.createElement("iframe");
-    iframeEl.id = "pdfNativeFrame";
-    iframeEl.style.cssText = "width:100%;height:100%;border:none;background:#fff;";
-    iframeEl.src = `${currentObjectUrl}#toolbar=0&navpanes=0&scrollbar=1`;
-    canvasWrap.insertBefore(iframeEl, watermarkLayer);
+    if (embedEl) embedEl.remove();
+    embedEl = document.createElement("embed");
+    embedEl.id = "pdfNativeEmbed";
+    embedEl.type = "application/pdf";
+    embedEl.style.cssText = "width:100%;height:100%;border:none;background:#fff;";
+    embedEl.src = currentObjectUrl;
+    canvasWrap.insertBefore(embedEl, watermarkLayer);
 
     pageInfo.textContent = "";
   } catch (err) {
@@ -83,7 +85,7 @@ document.getElementById("closeViewer").addEventListener("click", closeViewer);
 
 function closeViewer() {
   overlay.style.display = "none";
-  if (iframeEl) { iframeEl.remove(); iframeEl = null; }
+  if (embedEl) { embedEl.remove(); embedEl = null; }
   if (currentObjectUrl) { URL.revokeObjectURL(currentObjectUrl); currentObjectUrl = null; }
   showContentAgain();
 }
