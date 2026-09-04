@@ -22,6 +22,10 @@
     <main class="main">
       <div class="topbar">
         <h2 id="welcomeText">مرحبًا 👋</h2>
+        <div class="top-controls">
+          <button class="icon-btn" id="langToggle" onclick="betaToggleLang()">EN</button>
+          <button class="icon-btn" id="themeToggle" onclick="betaToggleTheme()">☀️</button>
+        </div>
       </div>
 
       <!-- الرئيسية -->
@@ -51,8 +55,12 @@
       <!-- الفولدرات -->
       <section id="tab-folders" style="display:none;">
         <div class="card">
-          <div style="display:flex;gap:10px;margin-bottom:16px;">
-            <input type="text" id="newFolderName" placeholder="اسم الفولدر الجديد" style="flex:1;padding:10px;border-radius:8px;border:1.5px solid var(--border);">
+          <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+            <input type="text" id="newFolderName" placeholder="اسم الفولدر الجديد" style="flex:1;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface-2);color:var(--text);">
+            <select id="newFolderType" style="padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface-2);color:var(--text);">
+              <option value="private">🔒 خاص (يحدد Owner من يشوفه)</option>
+              <option value="public">🌐 عام (لكل الطلاب المفعّلين)</option>
+            </select>
             <button class="btn" style="width:auto;" id="addFolderBtn">إضافة فولدر</button>
           </div>
           <div class="folder-grid" id="folderGrid"></div>
@@ -63,7 +71,7 @@
       <section id="tab-files" style="display:none;">
         <div class="card">
           <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
-            <select id="uploadFolderSelect" style="padding:10px;border-radius:8px;border:1.5px solid var(--border);"></select>
+            <select id="uploadFolderSelect" style="padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface-2);color:var(--text);"></select>
             <input type="file" id="uploadFileInput" accept="application/pdf" />
             <button class="btn" style="width:auto;" id="uploadBtn">رفع الملف</button>
           </div>
@@ -76,7 +84,8 @@
       <section id="tab-permissions" style="display:none;">
         <div class="card">
           <label>اختر طالبًا</label>
-          <select id="permStudentSelect" style="padding:10px;border-radius:8px;border:1.5px solid var(--border);width:100%;margin:10px 0;"></select>
+          <select id="permStudentSelect" style="padding:10px;border-radius:8px;border:1.5px solid var(--border);width:100%;margin:10px 0;background:var(--surface-2);color:var(--text);"></select>
+          <p style="color:var(--muted);font-size:0.85rem;">الفولدرات العامة متاحة تلقائيًا لكل الطلاب ولا تحتاج تحديد هنا.</p>
           <div id="permFoldersList"></div>
           <button class="btn" style="width:auto;margin-top:14px;" id="savePermsBtn">حفظ الصلاحيات</button>
           <div id="permMsg" class="msg"></div>
@@ -87,7 +96,7 @@
       <section id="tab-devices" style="display:none;">
         <div class="card">
           <table>
-            <thead><tr><th>المستخدم</th><th>معرّف الجهاز</th><th>وقت الربط</th><th>إجراء</th></tr></thead>
+            <thead><tr><th>المستخدم</th><th>نظام التشغيل</th><th>المتصفح</th><th>وقت الربط</th><th>إجراء</th></tr></thead>
             <tbody id="devicesTable"></tbody>
           </table>
         </div>
@@ -95,6 +104,7 @@
     </main>
   </div>
 
+  <script type="module" src="js/theme-lang.js"></script>
   <script type="module" src="js/dashboard.js"></script>
 </body>
 </html>
