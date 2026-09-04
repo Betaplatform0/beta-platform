@@ -12,9 +12,37 @@ const ctx = canvas.getContext("2d");
 const pageInfo = document.getElementById("pageInfo");
 const watermarkLayer = document.getElementById("watermarkLayer");
 
+let focusShield = null;
+
+function ensureFocusShield() {
+  if (focusShield) return focusShield;
+  focusShield = document.createElement("div");
+  focusShield.style.cssText = "position:fixed;inset:0;background:#000;z-index:1001;display:none;align-items:center;justify-content:center;color:#fff;font-size:1.1rem;";
+  focusShield.textContent = "المحتوى مخفي مؤقتًا لحماية الملف";
+  overlay.appendChild(focusShield);
+  return focusShield;
+}
+
+function hideContentForSafety() {
+  if (overlay.style.display !== "flex") return;
+  ensureFocusShield().style.display = "flex";
+}
+
+function showContentAgain() {
+  if (focusShield) focusShield.style.display = "none";
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) hideContentForSafety();
+  else showContentAgain();
+});
+window.addEventListener("blur", hideContentForSafety);
+window.addEventListener("focus", showContentAgain);
+
 export async function openPdfViewer(fileId, user) {
   overlay.style.display = "flex";
   buildWatermark(user);
+  ensureFocusShield();
 
   try {
     const res = await fetch(`${BACKEND_URL}/api/files/${fileId}/stream`, {
@@ -85,6 +113,7 @@ document.getElementById("closeViewer").addEventListener("click", closeViewer);
 function closeViewer() {
   overlay.style.display = "none";
   pdfDoc = null;
+  showContentAgain();
 }
 
 overlay.addEventListener("contextmenu", (e) => e.preventDefault());
