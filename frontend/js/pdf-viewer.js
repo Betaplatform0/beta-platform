@@ -90,7 +90,8 @@ async function renderPage(num) {
   const page = await pdfDoc.getPage(num);
   const viewport = page.getViewport({ scale: currentScale });
 
-  const dpr = window.devicePixelRatio || 1;
+  // رفع دقة الرسم لأقصى درجة ممكنة لوضوح أفضل للنص
+  const dpr = Math.max(window.devicePixelRatio || 1, 2.5);
 
   canvas.width = Math.floor(viewport.width * dpr);
   canvas.height = Math.floor(viewport.height * dpr);
@@ -98,8 +99,10 @@ async function renderPage(num) {
   canvas.style.height = `${Math.floor(viewport.height)}px`;
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
 
-  await page.render({ canvasContext: ctx, viewport }).promise;
+  await page.render({ canvasContext: ctx, viewport, intent: "print" }).promise;
   pageInfo.textContent = `صفحة ${num} / ${pdfDoc.numPages}`;
 }
 
