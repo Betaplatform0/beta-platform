@@ -4,6 +4,9 @@ import { openPdfViewer } from "./pdf-viewer.js";
 import { initTheme, initLang } from "./theme-lang.js";
 
 let currentUser = null;
+let foldersCache = [];
+let allowedSet = new Set();
+let folderStack = []; // {id, name}
 
 const roleLabel = { owner: "Owner", admin: "Admin", student: "Student" };
 const statusLabel = { pending: "قيد المراجعة", active: "مفعّل", disabled: "معطّل" };
@@ -17,48 +20,84 @@ async function api(pathname) {
   return data;
 }
 
-async function loadFolders() {
-  const { folders } = await api("/api/admin/folders");
-  const { allowedFolders } = await api("/api/admin/permissions/me").catch(() => ({ allowedFolders: [] }));
-  const allowed = allowedFolders || [];
-  const visibleFolders = folders.filter((f) => allowed.includes(f.id));
-
-  const grid = document.getElementById("folderGrid");
-  if (visibleFolders.length === 0) {
-    grid.innerHTML = "<p style='color:var(--muted)'>لا توجد مواد متاحة لك حاليًا.</p>";
-    return;
-  }
-  grid.innerHTML = visibleFolders
-    .map((f) => `<div class="folder-card" data-id="${f.id}" data-name="${f.name}"><div class="icon">📁</div><div>${f.name}</div></div>`)
-    .join("");
-
-  grid.querySelectorAll(".folder-card").forEach((card) => {
-    card.addEventListener("click", () => openFolder(card.dataset.id, card.dataset.name));
-  });
+function canSee(folder) {
+  return folder.type === "public" || allowedSet.has(folder.id);
 }
 
-async function openFolder(folderId, folderName) {
-  document.getElementById("foldersView").style.display = "none";
-  document.getElementById("filesView").style.display = "block";
-  const list = document.getElementById("filesList");
-  list.innerHTML = "جارٍ التحميل...";
+function currentParentId() {
+  return folderStack.length ? folderStack[folderStack.length - 1].id : null;
+}
 
-  const { files } = await api(`/api/files/by-folder/${folderId}`);
-  list.innerHTML = files
-    .map((f) => `<div class="file-row" data-id="${f.id}" data-name="${f.displayName}"><span>📄 ${f.displayName}</span><span>عرض</span></div>`)
-    .join("") || "<p style='color:var(--muted)'>لا توجد ملفات في هذا الفولدر بعد.</p>";
-
-  list.querySelectorAll(".file-row").forEach((row) => {
-    row.addEventListener("click", () => {
-      openPdfViewer(row.dataset.id, currentUser);
+function renderBreadcrumb() {
+  const bc = document.getElementById("folderBreadcrumb");
+  if (!bc) return;
+  const rootLabel = `<span class="breadcrumb-item" data-index="-1" style="cursor:pointer;color:var(--primary);">📁 الرئيسية</span>`;
+  const items = folderStack.map((f, i) => `<span> / </span><span class="breadcrumb-item" data-index="${i}" style="cursor:pointer;color:var(--primary);">${f.name}</span>`);
+  bc.innerHTML = rootLabel + items.join("");
+  bc.querySelectorAll(".breadcrumb-item").forEach((el) => {
+    el.addEventListener("click", () => {
+      const idx = parseInt(el.dataset.index, 10);
+      folderStack = idx === -1 ? [] : folderStack.slice(0, idx + 1);
+      renderCurrentLevel();
     });
   });
 }
 
-document.getElementById("backBtn").addEventListener("click", () => {
-  document.getElementById("filesView").style.display = "none";
-  document.getElementById("foldersView").style.display = "block";
-});
+async function renderCurrentLevel() {
+  renderBreadcrumb();
+  const parentId = currentParentId();
+
+  const visibleFolders = foldersCache.filter((f) => (f.parentId || null) === parentId && canSee(f));
+  const grid = document.getElementById("folderGrid");
+  grid.innerHTML =
+    visibleFolders
+      .map((f) => `<div class="folder-card" data-id="${f.id}" data-name="${f.name}"><div class="icon">📁</div><div>${f.name}</div></div>`)
+      .join("") || "";
+
+  grid.querySelectorAll(".folder-card").forEach((card) => {
+    card.addEventListener("click", () => {
+      folderStack.push({ id: card.dataset.id, name: card.dataset.name });
+      renderCurrentLevel();
+    });
+  });
+
+  const filesSection = document.getElementById("filesInLevelSection");
+  const filesList = document.getElementById("filesInLevelList");
+
+  if (parentId) {
+    filesSection.style.display = "block";
+    try {
+      const { files } = await api(`/api/files/by-folder/${parentId}`);
+      filesList.innerHTML =
+        files
+          .map((f) => `<div class="file-row" data-id="${f.id}"><span>📄 ${f.displayName}</span><span>عرض</span></div>`)
+          .join("") || "<p style='color:var(--muted)'>لا توجد ملفات في هذا الفولدر.</p>";
+
+      filesList.querySelectorAll(".file-row").forEach((row) => {
+        row.addEventListener("click", () => openPdfViewer(row.dataset.id, currentUser));
+      });
+    } catch (err) {
+      filesList.innerHTML = "<p style='color:var(--muted)'>لا توجد صلاحية لعرض ملفات هذا الفولدر.</p>";
+    }
+  } else {
+    filesSection.style.display = "none";
+    filesList.innerHTML = "";
+  }
+
+  if (visibleFolders.length === 0 && !parentId) {
+    grid.innerHTML = "<p style='color:var(--muted)'>لا توجد مواد متاحة لك حاليًا.</p>";
+  }
+}
+
+async function loadEverything() {
+  const { folders } = await api("/api/admin/folders");
+  foldersCache = folders;
+
+  const { allowedFolders } = await api("/api/admin/permissions/me").catch(() => ({ allowedFolders: [] }));
+  allowedSet = new Set(allowedFolders || []);
+
+  renderCurrentLevel();
+}
 
 // ------------ التنقل بين "الرئيسية" و"حسابي" ------------
 document.querySelectorAll(".nav-item[data-view]").forEach((item) => {
@@ -99,5 +138,5 @@ function closeMobileMenu() {
   currentUser = await guardPage(["student"]);
   document.getElementById("welcomeText").textContent = `مرحبًا ${currentUser.fullName} 👋`;
   renderAccount();
-  loadFolders();
+  loadEverything();
 })();
