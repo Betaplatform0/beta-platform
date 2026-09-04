@@ -30,7 +30,7 @@ const app = express();
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.ALLOWED_ORIGIN || "*",
+    origin: process.env.ALLOWED_ORIGIN || "https://betaplatform0.github.io",
     credentials: true,
   })
 );
