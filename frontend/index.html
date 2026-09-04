@@ -9,25 +9,25 @@
 <body>
   <div class="auth-wrapper">
     <div class="auth-card">
-      <div class="brand" style="text-align:center;display:block;">Beta</div>
+      <div class="auth-icon">🩺</div>
       <h1>تسجيل الدخول</h1>
-      <p class="auth-sub">منصتك التعليمية الخاصة</p>
+      <p class="auth-sub">أدخل رقم هاتفك وكلمة المرور للمتابعة</p>
 
       <form id="loginForm">
         <div class="field">
           <label>رقم الهاتف</label>
-          <input type="tel" id="phone" placeholder="01xxxxxxxxx" required />
+          <input type="tel" id="phone" placeholder="01000000000" required />
         </div>
         <div class="field">
           <label>كلمة المرور</label>
           <input type="password" id="password" placeholder="••••••••" required />
         </div>
-        <button type="submit" class="btn" id="loginBtn">تسجيل الدخول</button>
+        <button type="submit" class="btn" id="loginBtn">دخول</button>
         <div class="msg" id="msg"></div>
       </form>
 
       <div class="switch-link">
-        ليس لديك حساب؟ <a href="signup.html">إنشاء حساب جديد</a>
+        ليس لديك حساب؟ <a href="signup.html">سجل حساب جديد الآن</a>
       </div>
     </div>
   </div>
@@ -59,7 +59,6 @@
         const user = cred.user;
         const idToken = await user.getIdToken();
 
-        // 1) التحقق من حالة الحساب والدور مباشرة من Firestore
         const userSnap = await getDoc(doc(db, "users", user.uid));
         if (!userSnap.exists()) {
           await signOut(auth);
@@ -82,7 +81,6 @@
           return;
         }
 
-        // 2) التحقق من ربط الجهاز عبر الـ Backend (المصدر الموثوق الوحيد)
         const deviceId = getOrCreateDeviceId();
         const fingerprint = getDeviceFingerprint();
 
@@ -104,7 +102,6 @@
           return;
         }
 
-        // 3) تحديث آخر تسجيل دخول
         await updateDoc(doc(db, "users", user.uid), { lastLogin: serverTimestamp() });
 
         showMsg("تم تسجيل الدخول بنجاح، جارٍ التحويل...", "success");
