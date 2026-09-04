@@ -258,16 +258,20 @@ th { color: var(--muted); font-weight: 700; }
   cursor: pointer;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 900px) {
   .app-shell { flex-direction: column; }
   .sidebar:not(.student-sidebar) { width: 100%; height: auto; position: relative; display: flex; overflow-x: auto; gap: 4px; }
   .sidebar:not(.student-sidebar) .brand { display: none; }
   .sidebar:not(.student-sidebar) .nav-item { white-space: nowrap; }
 
-  .mobile-menu-btn { display: inline-flex; align-items: center; justify-content: center; }
+  .mobile-menu-btn { display: inline-flex !important; align-items: center; justify-content: center; }
+
   .student-sidebar {
-    position: fixed;
-    inset: 0 0 0 auto;
+    position: fixed !important;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    left: auto;
     width: 260px;
     height: 100vh;
     z-index: 500;
@@ -278,8 +282,8 @@ th { color: var(--muted); font-weight: 700; }
     overflow-x: hidden;
     overflow-y: auto;
   }
-  html[dir="ltr"] .student-sidebar { inset: 0 auto 0 0; transform: translateX(-100%); }
-  .student-sidebar.open { transform: translateX(0); }
+  html[dir="ltr"] .student-sidebar { right: auto; left: 0; transform: translateX(-100%); }
+  .student-sidebar.open { transform: translateX(0) !important; }
   .student-sidebar .nav-item { white-space: normal; }
   .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 400; }
   .sidebar-backdrop.open { display: block; }
