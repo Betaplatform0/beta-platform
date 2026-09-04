@@ -32,13 +32,12 @@
 
       <!-- الصفحة الرئيسية -->
       <div id="viewHome">
-        <div id="foldersView">
-          <div class="folder-grid" id="folderGrid"></div>
-        </div>
+        <div id="folderBreadcrumb" style="margin-bottom:14px;font-size:0.95rem;"></div>
+        <div class="folder-grid" id="folderGrid" style="margin-bottom:20px;"></div>
 
-        <div id="filesView" style="display:none;">
-          <button class="btn secondary" style="width:auto;margin-bottom:16px;" id="backBtn" data-i18n="backToFolders">⬅ رجوع للفولدرات</button>
-          <div class="file-list" id="filesList"></div>
+        <div id="filesInLevelSection" style="display:none;">
+          <h3 style="font-size:1rem;color:var(--muted);margin-bottom:10px;">📄 ملفات هذا الفولدر</h3>
+          <div class="file-list" id="filesInLevelList"></div>
         </div>
       </div>
 
