@@ -8,24 +8,20 @@ const router = express.Router();
 const db = () => admin.firestore();
 const UPLOAD_DIR = path.join(__dirname, "..", "uploads");
 
-/**
- * تتحقق إن كان المستخدم مسموح له برؤية فولدر معيّن
- * owner/admin: مسموح لهم بكل شيء
- * student: يُرجع فقط الفولدرات الموجودة في permissions/{uid}.allowedFolders
- */
 async function canAccessFolder(user, folderId) {
   if (user.role === "owner" || user.role === "admin") return true;
+
+  const folderSnap = await db().collection("folders").doc(folderId).get();
+  if (!folderSnap.exists) return false;
+
+  if (folderSnap.data().type === "public") return true;
+
   const permSnap = await db().collection("permissions").doc(user.uid).get();
   if (!permSnap.exists) return false;
   const allowed = permSnap.data().allowedFolders || [];
   return allowed.includes(folderId);
 }
 
-/**
- * GET /api/files/:fileId/stream
- * يتحقق من صلاحية المستخدم قبل بث محتوى الـ PDF بايت بايت.
- * لا يوجد رابط عام - كل طلب يتطلب Authorization Header صالح.
- */
 router.get("/:fileId/stream", requireAuth, requireActive, async (req, res) => {
   try {
     const fileSnap = await db().collection("files").doc(req.params.fileId).get();
@@ -43,7 +39,7 @@ router.get("/:fileId/stream", requireAuth, requireActive, async (req, res) => {
     }
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", "inline"); // بدون اسم حقيقي، بدون تنزيل مباشر
+    res.setHeader("Content-Disposition", "inline");
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Content-Type-Options", "nosniff");
 
@@ -54,10 +50,6 @@ router.get("/:fileId/stream", requireAuth, requireActive, async (req, res) => {
   }
 });
 
-/**
- * GET /api/files/by-folder/:folderId
- * يُرجع قائمة الملفات (metadata فقط) داخل فولدر معيّن بعد التحقق من الصلاحية
- */
 router.get("/by-folder/:folderId", requireAuth, requireActive, async (req, res) => {
   try {
     const allowed = await canAccessFolder(req.betaUser, req.params.folderId);
