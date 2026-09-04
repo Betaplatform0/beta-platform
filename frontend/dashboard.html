@@ -62,8 +62,9 @@
       <!-- الفولدرات -->
       <section id="tab-folders" style="display:none;">
         <div class="card">
+          <div id="folderBreadcrumb" style="margin-bottom:14px;font-size:0.95rem;"></div>
           <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
-            <input type="text" id="newFolderName" placeholder="اسم الفولدر الجديد" style="flex:1;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface-2);color:var(--text);">
+            <input type="text" id="newFolderName" placeholder="اسم الفولدر الجديد (سيُنشأ داخل الفولدر الحالي)" style="flex:1;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface-2);color:var(--text);">
             <select id="newFolderType" style="padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface-2);color:var(--text);">
               <option value="private">🔒 خاص (يحدد Owner من يشوفه)</option>
               <option value="public">🌐 عام (لكل الطلاب المفعّلين)</option>
@@ -78,7 +79,7 @@
       <section id="tab-files" style="display:none;">
         <div class="card">
           <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
-            <select id="uploadFolderSelect" style="padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface-2);color:var(--text);"></select>
+            <select id="uploadFolderSelect" style="padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface-2);color:var(--text);min-width:220px;"></select>
             <input type="file" id="uploadFileInput" accept="application/pdf" />
             <button class="btn" style="width:auto;" id="uploadBtn" data-i18n="uploadBtn">رفع الملف</button>
           </div>
