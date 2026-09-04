@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Beta | الطالب</title>
 <link rel="stylesheet" href="css/style.css" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -13,9 +12,9 @@
   <div class="app-shell">
     <aside class="sidebar student-sidebar" id="studentSidebar">
       <span class="brand" style="text-align:center;display:block;font-size:1.8rem;margin-bottom:24px;">Beta</span>
-      <div class="nav-item active" data-view="home">🏠 الصفحة الرئيسية</div>
-      <div class="nav-item" data-view="account">👤 حسابي</div>
-      <div class="nav-item" onclick="betaLogout()">🚪 تسجيل الخروج</div>
+      <div class="nav-item active" data-view="home" data-i18n="navHome">🏠 الصفحة الرئيسية</div>
+      <div class="nav-item" data-view="account" data-i18n="navAccount">👤 حسابي</div>
+      <div class="nav-item" onclick="betaLogout()" data-i18n="navLogout">🚪 تسجيل الخروج</div>
     </aside>
 
     <main class="main">
@@ -37,7 +36,7 @@
         </div>
 
         <div id="filesView" style="display:none;">
-          <button class="btn secondary" style="width:auto;margin-bottom:16px;" id="backBtn">⬅ رجوع للفولدرات</button>
+          <button class="btn secondary" style="width:auto;margin-bottom:16px;" id="backBtn" data-i18n="backToFolders">⬅ رجوع للفولدرات</button>
           <div class="file-list" id="filesList"></div>
         </div>
       </div>
@@ -47,11 +46,11 @@
         <div class="card">
           <table>
             <tbody>
-              <tr><th>الاسم الكامل</th><td id="accFullName">-</td></tr>
-              <tr><th>رقم الهاتف</th><td id="accPhone">-</td></tr>
-              <tr><th>رقم الجلوس</th><td id="accSeat">-</td></tr>
-              <tr><th>نوع الحساب</th><td id="accRole">-</td></tr>
-              <tr><th>حالة الحساب</th><td id="accStatus">-</td></tr>
+              <tr><th data-i18n="accFullName">الاسم الكامل</th><td id="accFullName">-</td></tr>
+              <tr><th data-i18n="accPhone">رقم الهاتف</th><td id="accPhone">-</td></tr>
+              <tr><th data-i18n="accSeat">رقم الجلوس</th><td id="accSeat">-</td></tr>
+              <tr><th data-i18n="accRole">نوع الحساب</th><td id="accRole">-</td></tr>
+              <tr><th data-i18n="accStatus">حالة الحساب</th><td id="accStatus">-</td></tr>
             </tbody>
           </table>
         </div>
@@ -63,19 +62,14 @@
   <div class="pdf-overlay" id="pdfOverlay" style="display:none;">
     <div class="pdf-toolbar">
       <div>
-        <button id="prevPage">▶ السابق</button>
         <span id="pageInfo" style="color:#fff;margin:0 8px;"></span>
-        <button id="nextPage">التالي ◀</button>
       </div>
       <div>
-        <button id="zoomOut">－</button>
-        <button id="zoomIn">＋</button>
         <button id="fullscreenBtn">⛶ ملء الشاشة</button>
         <button id="closeViewer">✕ إغلاق</button>
       </div>
     </div>
     <div class="pdf-canvas-wrap" id="pdfCanvasWrap" oncontextmenu="return false;">
-      <canvas id="pdfCanvas"></canvas>
       <div class="watermark-layer" id="watermarkLayer"></div>
     </div>
   </div>
