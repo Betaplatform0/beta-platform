@@ -1,18 +1,13 @@
 import { BACKEND_URL } from "./firebase-config.js";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-
-let pdfDoc = null;
-let currentPage = 1;
-let currentScale = 1;
-
 const overlay = document.getElementById("pdfOverlay");
-const canvas = document.getElementById("pdfCanvas");
-const ctx = canvas.getContext("2d");
+const canvasWrap = document.getElementById("pdfCanvasWrap");
 const pageInfo = document.getElementById("pageInfo");
 const watermarkLayer = document.getElementById("watermarkLayer");
 
 let focusShield = null;
+let iframeEl = null;
+let currentObjectUrl = null;
 
 function ensureFocusShield() {
   if (focusShield) return focusShield;
@@ -43,6 +38,7 @@ export async function openPdfViewer(fileId, user) {
   overlay.style.display = "flex";
   buildWatermark(user);
   ensureFocusShield();
+  pageInfo.textContent = "جارٍ التحميل...";
 
   try {
     const res = await fetch(`${BACKEND_URL}/api/files/${fileId}/stream`, {
@@ -54,25 +50,19 @@ export async function openPdfViewer(fileId, user) {
       closeViewer();
       return;
     }
-    const buffer = await res.arrayBuffer();
+    const blob = await res.blob();
 
-    pdfDoc = await pdfjsLib.getDocument({
-      data: buffer,
-      cMapUrl: "https://unpkg.com/pdfjs-dist@3.11.174/cmaps/",
-      cMapPacked: true,
-      standardFontDataUrl: "https://unpkg.com/pdfjs-dist@3.11.174/standard_fonts/",
-      disableFontFace: false,
-      useSystemFonts: false,
-    }).promise;
+    if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+    currentObjectUrl = URL.createObjectURL(blob);
 
-    currentPage = 1;
+    if (iframeEl) iframeEl.remove();
+    iframeEl = document.createElement("iframe");
+    iframeEl.id = "pdfNativeFrame";
+    iframeEl.style.cssText = "width:100%;height:100%;border:none;background:#fff;";
+    iframeEl.src = `${currentObjectUrl}#toolbar=0&navpanes=0&scrollbar=1`;
+    canvasWrap.insertBefore(iframeEl, watermarkLayer);
 
-    const firstPage = await pdfDoc.getPage(1);
-    const naturalViewport = firstPage.getViewport({ scale: 1 });
-    const wrapWidth = document.getElementById("pdfCanvasWrap").clientWidth - 40;
-    currentScale = wrapWidth / naturalViewport.width;
-
-    renderPage(currentPage);
+    pageInfo.textContent = "";
   } catch (err) {
     console.error(err);
     alert("تعذر تحميل الملف.");
@@ -86,36 +76,6 @@ function buildWatermark(user) {
   watermarkLayer.innerHTML = cells;
 }
 
-async function renderPage(num) {
-  const page = await pdfDoc.getPage(num);
-  const viewport = page.getViewport({ scale: currentScale });
-
-  const dpr = Math.max(window.devicePixelRatio || 1, 2.5);
-
-  canvas.width = Math.floor(viewport.width * dpr);
-  canvas.height = Math.floor(viewport.height * dpr);
-  canvas.style.width = `${Math.floor(viewport.width)}px`;
-  canvas.style.height = `${Math.floor(viewport.height)}px`;
-
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-
-  await page.render({ canvasContext: ctx, viewport, intent: "print" }).promise;
-  pageInfo.textContent = `صفحة ${num} / ${pdfDoc.numPages}`;
-}
-
-document.getElementById("prevPage").addEventListener("click", () => {
-  if (currentPage > 1) { currentPage--; renderPage(currentPage); }
-});
-document.getElementById("nextPage").addEventListener("click", () => {
-  if (pdfDoc && currentPage < pdfDoc.numPages) { currentPage++; renderPage(currentPage); }
-});
-document.getElementById("zoomIn").addEventListener("click", () => { currentScale += 0.2; renderPage(currentPage); });
-document.getElementById("zoomOut").addEventListener("click", () => {
-  currentScale = Math.max(0.5, currentScale - 0.2);
-  renderPage(currentPage);
-});
 document.getElementById("fullscreenBtn").addEventListener("click", () => {
   if (overlay.requestFullscreen) overlay.requestFullscreen();
 });
@@ -123,7 +83,8 @@ document.getElementById("closeViewer").addEventListener("click", closeViewer);
 
 function closeViewer() {
   overlay.style.display = "none";
-  pdfDoc = null;
+  if (iframeEl) { iframeEl.remove(); iframeEl = null; }
+  if (currentObjectUrl) { URL.revokeObjectURL(currentObjectUrl); currentObjectUrl = null; }
   showContentAgain();
 }
 
