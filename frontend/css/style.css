@@ -214,12 +214,6 @@ th { color: var(--muted); font-weight: 700; }
 }
 .watermark-layer span { font-size: 22px; font-weight: 700; color: #000; white-space: nowrap; text-align: center; align-self: center; }
 
-@media (max-width: 860px) {
-  .app-shell { flex-direction: column; }
-  .sidebar { width: 100%; height: auto; position: relative; display: flex; overflow-x: auto; gap: 4px; }
-  .sidebar .brand { display: none; }
-  .nav-item { white-space: nowrap; }
-}
 /* ---------- الوضع النهاري ---------- */
 :root[data-theme="light"] {
   --bg: #f4f6fb;
@@ -265,10 +259,28 @@ th { color: var(--muted); font-weight: 700; }
 }
 
 @media (max-width: 860px) {
+  .app-shell { flex-direction: column; }
+  .sidebar:not(.student-sidebar) { width: 100%; height: auto; position: relative; display: flex; overflow-x: auto; gap: 4px; }
+  .sidebar:not(.student-sidebar) .brand { display: none; }
+  .sidebar:not(.student-sidebar) .nav-item { white-space: nowrap; }
+
   .mobile-menu-btn { display: inline-flex; align-items: center; justify-content: center; }
-  .student-sidebar { position: fixed; inset: 0 0 0 auto; width: 260px; z-index: 500; transform: translateX(100%); transition: transform 0.25s; }
+  .student-sidebar {
+    position: fixed;
+    inset: 0 0 0 auto;
+    width: 260px;
+    height: 100vh;
+    z-index: 500;
+    transform: translateX(100%);
+    transition: transform 0.25s;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
   html[dir="ltr"] .student-sidebar { inset: 0 auto 0 0; transform: translateX(-100%); }
   .student-sidebar.open { transform: translateX(0); }
+  .student-sidebar .nav-item { white-space: normal; }
   .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 400; }
   .sidebar-backdrop.open { display: block; }
 }
