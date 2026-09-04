@@ -10,24 +10,25 @@
   <div class="auth-wrapper">
     <div class="auth-card">
       <div class="auth-icon">🩺</div>
-      <h1>تسجيل الدخول</h1>
-      <p class="auth-sub">أدخل رقم هاتفك وكلمة المرور للمتابعة</p>
+      <h1 data-i18n="loginTitle">تسجيل الدخول</h1>
+      <p class="auth-sub" data-i18n="loginSub">أدخل رقم هاتفك وكلمة المرور للمتابعة</p>
 
       <form id="loginForm">
         <div class="field">
-          <label>رقم الهاتف</label>
+          <label data-i18n="phoneLabel">رقم الهاتف</label>
           <input type="tel" id="phone" placeholder="01000000000" required />
         </div>
         <div class="field">
-          <label>كلمة المرور</label>
+          <label data-i18n="passwordLabel">كلمة المرور</label>
           <input type="password" id="password" placeholder="••••••••" required />
         </div>
-        <button type="submit" class="btn" id="loginBtn">دخول</button>
+        <button type="submit" class="btn" id="loginBtn" data-i18n="loginBtn">دخول</button>
         <div class="msg" id="msg"></div>
       </form>
 
       <div class="switch-link">
-        ليس لديك حساب؟ <a href="signup.html">سجل حساب جديد الآن</a>
+        <span data-i18n="noAccount">ليس لديك حساب؟</span>
+        <a href="signup.html" data-i18n="signupLink">سجل حساب جديد الآن</a>
       </div>
     </div>
   </div>
@@ -35,6 +36,10 @@
   <script type="module">
     import { auth, db, doc, getDoc, updateDoc, signInWithEmailAndPassword, signOut, phoneToPseudoEmail, BACKEND_URL, serverTimestamp } from "./js/firebase-config.js";
     import { getOrCreateDeviceId, getDeviceFingerprint } from "./js/device.js";
+    import { initTheme, initLang } from "./js/theme-lang.js";
+
+    initTheme();
+    initLang();
 
     const form = document.getElementById("loginForm");
     const msg = document.getElementById("msg");
