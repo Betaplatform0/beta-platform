@@ -10,13 +10,13 @@
   <div class="app-shell">
     <aside class="sidebar">
       <span class="brand">Beta</span>
-      <div class="nav-item active" data-tab="home">🏠 الرئيسية</div>
-      <div class="nav-item" data-tab="accounts">👥 الحسابات</div>
-      <div class="nav-item" data-tab="folders">📁 الفولدرات</div>
-      <div class="nav-item" data-tab="files">📄 الملفات</div>
-      <div class="nav-item" data-tab="permissions">🔐 الصلاحيات</div>
-      <div class="nav-item" data-tab="devices">📱 الأجهزة</div>
-      <div class="nav-item" onclick="betaLogout()">🚪 تسجيل الخروج</div>
+      <div class="nav-item active" data-tab="home" data-i18n="dashHome">🏠 الرئيسية</div>
+      <div class="nav-item" data-tab="accounts" data-i18n="dashAccounts">👥 الحسابات</div>
+      <div class="nav-item" data-tab="folders" data-i18n="dashFolders">📁 الفولدرات</div>
+      <div class="nav-item" data-tab="files" data-i18n="dashFiles">📄 الملفات</div>
+      <div class="nav-item" data-tab="permissions" data-i18n="dashPermissions">🔐 الصلاحيات</div>
+      <div class="nav-item" data-tab="devices" data-i18n="dashDevices">📱 الأجهزة</div>
+      <div class="nav-item" onclick="betaLogout()" data-i18n="dashLogout">🚪 تسجيل الخروج</div>
     </aside>
 
     <main class="main">
@@ -31,12 +31,12 @@
       <!-- الرئيسية -->
       <section id="tab-home">
         <div class="stat-grid">
-          <div class="stat-card"><div class="num" id="statStudents">-</div><div class="label">إجمالي الطلاب</div></div>
-          <div class="stat-card"><div class="num" id="statActive">-</div><div class="label">حسابات مفعّلة</div></div>
-          <div class="stat-card"><div class="num" id="statPending">-</div><div class="label">حسابات معلّقة</div></div>
-          <div class="stat-card"><div class="num" id="statAdmins">-</div><div class="label">عدد الأدمن</div></div>
-          <div class="stat-card"><div class="num" id="statFolders">-</div><div class="label">الفولدرات</div></div>
-          <div class="stat-card"><div class="num" id="statFiles">-</div><div class="label">الملفات</div></div>
+          <div class="stat-card"><div class="num" id="statStudents">-</div><div class="label" data-i18n="statStudents">إجمالي الطلاب</div></div>
+          <div class="stat-card"><div class="num" id="statActive">-</div><div class="label" data-i18n="statActive">حسابات مفعّلة</div></div>
+          <div class="stat-card"><div class="num" id="statPending">-</div><div class="label" data-i18n="statPending">حسابات معلّقة</div></div>
+          <div class="stat-card"><div class="num" id="statAdmins">-</div><div class="label" data-i18n="statAdmins">عدد الأدمن</div></div>
+          <div class="stat-card"><div class="num" id="statFolders">-</div><div class="label" data-i18n="statFolders">الفولدرات</div></div>
+          <div class="stat-card"><div class="num" id="statFiles">-</div><div class="label" data-i18n="statFiles">الملفات</div></div>
         </div>
       </section>
 
@@ -45,7 +45,14 @@
         <div class="card">
           <table>
             <thead>
-              <tr><th>الاسم</th><th>الهاتف</th><th>رقم الجلوس</th><th>الدور</th><th>الحالة</th><th>إجراءات</th></tr>
+              <tr>
+                <th data-i18n="thName">الاسم</th>
+                <th data-i18n="thPhone">الهاتف</th>
+                <th data-i18n="thSeat">رقم الجلوس</th>
+                <th data-i18n="thRole">الدور</th>
+                <th data-i18n="thStatus">الحالة</th>
+                <th data-i18n="thActions">إجراءات</th>
+              </tr>
             </thead>
             <tbody id="accountsTable"></tbody>
           </table>
@@ -61,7 +68,7 @@
               <option value="private">🔒 خاص (يحدد Owner من يشوفه)</option>
               <option value="public">🌐 عام (لكل الطلاب المفعّلين)</option>
             </select>
-            <button class="btn" style="width:auto;" id="addFolderBtn">إضافة فولدر</button>
+            <button class="btn" style="width:auto;" id="addFolderBtn" data-i18n="addFolderBtn">إضافة فولدر</button>
           </div>
           <div class="folder-grid" id="folderGrid"></div>
         </div>
@@ -73,7 +80,7 @@
           <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
             <select id="uploadFolderSelect" style="padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface-2);color:var(--text);"></select>
             <input type="file" id="uploadFileInput" accept="application/pdf" />
-            <button class="btn" style="width:auto;" id="uploadBtn">رفع الملف</button>
+            <button class="btn" style="width:auto;" id="uploadBtn" data-i18n="uploadBtn">رفع الملف</button>
           </div>
           <div id="uploadMsg" class="msg"></div>
           <div class="file-list" id="filesList"></div>
@@ -83,11 +90,11 @@
       <!-- الصلاحيات -->
       <section id="tab-permissions" style="display:none;">
         <div class="card">
-          <label>اختر طالبًا</label>
+          <label data-i18n="choosePermsLabel">اختر طالبًا</label>
           <select id="permStudentSelect" style="padding:10px;border-radius:8px;border:1.5px solid var(--border);width:100%;margin:10px 0;background:var(--surface-2);color:var(--text);"></select>
-          <p style="color:var(--muted);font-size:0.85rem;">الفولدرات العامة متاحة تلقائيًا لكل الطلاب ولا تحتاج تحديد هنا.</p>
+          <p style="color:var(--muted);font-size:0.85rem;" data-i18n="choosePermsNote">الفولدرات العامة متاحة تلقائيًا لكل الطلاب ولا تحتاج تحديد هنا.</p>
           <div id="permFoldersList"></div>
-          <button class="btn" style="width:auto;margin-top:14px;" id="savePermsBtn">حفظ الصلاحيات</button>
+          <button class="btn" style="width:auto;margin-top:14px;" id="savePermsBtn" data-i18n="savePermsBtn">حفظ الصلاحيات</button>
           <div id="permMsg" class="msg"></div>
         </div>
       </section>
@@ -96,7 +103,15 @@
       <section id="tab-devices" style="display:none;">
         <div class="card">
           <table>
-            <thead><tr><th>المستخدم</th><th>نظام التشغيل</th><th>المتصفح</th><th>وقت الربط</th><th>إجراء</th></tr></thead>
+            <thead>
+              <tr>
+                <th data-i18n="thName">الاسم</th>
+                <th data-i18n="thOS">نظام التشغيل</th>
+                <th data-i18n="thBrowser">المتصفح</th>
+                <th data-i18n="thLinkedAt">وقت الربط</th>
+                <th data-i18n="thAction">إجراء</th>
+              </tr>
+            </thead>
             <tbody id="devicesTable"></tbody>
           </table>
         </div>
