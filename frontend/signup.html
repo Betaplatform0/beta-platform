@@ -9,32 +9,32 @@
 <body>
   <div class="auth-wrapper">
     <div class="auth-card">
-      <div class="brand" style="text-align:center;display:block;">Beta</div>
+      <div class="auth-icon">📝</div>
       <h1>إنشاء حساب جديد</h1>
-      <p class="auth-sub">سيتم مراجعة حسابك قبل التفعيل</p>
+      <p class="auth-sub">سجل بياناتك وسيتم مراجعة حسابك قريبًا</p>
 
       <form id="signupForm">
         <div class="field">
           <label>الاسم الكامل</label>
-          <input type="text" id="fullName" required />
+          <input type="text" id="fullName" placeholder="أدخل اسمك ثلاثي" required />
         </div>
         <div class="field">
           <label>رقم الهاتف</label>
-          <input type="tel" id="phone" placeholder="01xxxxxxxxx" required />
+          <input type="tel" id="phone" placeholder="01000000000" required />
         </div>
         <div class="field">
           <label>رقم الجلوس</label>
-          <input type="text" id="seatNumber" required />
+          <input type="text" id="seatNumber" placeholder="أدخل رقم الجلوس" required />
         </div>
         <div class="field">
-          <label>كلمة المرور</label>
-          <input type="password" id="password" minlength="6" required />
+          <label>كلمة المرور (6 أحرف على الأقل)</label>
+          <input type="password" id="password" minlength="6" placeholder="••••••••" required />
         </div>
         <div class="field">
           <label>تأكيد كلمة المرور</label>
-          <input type="password" id="confirmPassword" minlength="6" required />
+          <input type="password" id="confirmPassword" minlength="6" placeholder="••••••••" required />
         </div>
-        <button type="submit" class="btn" id="signupBtn">إنشاء الحساب</button>
+        <button type="submit" class="btn" id="signupBtn">تسجيل الحساب</button>
         <div class="msg" id="msg"></div>
       </form>
 
@@ -81,13 +81,6 @@
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         const user = cred.user;
 
-        // -------------------------------------------------------------
-        // تحديد ما إذا كان هذا أول حساب على الإطلاق (Owner)
-        // يتم ذلك حصريًا عبر الـ Backend (وليس مباشرة من الفرونت إند)
-        // لمنع أي محاولة تحايل من المستخدم على قواعد Firestore.
-        // الـ Backend يستخدم Firebase Admin SDK للتحقق الحقيقي من
-        // عدد المستخدمين الحاليين قبل منح role=owner.
-        // -------------------------------------------------------------
         const idToken = await user.getIdToken();
         const res = await fetch(`${BACKEND_URL}/api/auth/register-profile`, {
           method: "POST",
