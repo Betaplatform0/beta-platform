@@ -8,23 +8,53 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
   <div class="app-shell">
-    <aside class="sidebar">
-      <span class="brand">Beta</span>
-      <div class="nav-item active">📁 موادي</div>
+    <aside class="sidebar student-sidebar" id="studentSidebar">
+      <span class="brand" style="text-align:center;display:block;font-size:1.8rem;margin-bottom:24px;">Beta</span>
+      <div class="nav-item active" data-view="home">🏠 الصفحة الرئيسية</div>
+      <div class="nav-item" data-view="account">👤 حسابي</div>
       <div class="nav-item" onclick="betaLogout()">🚪 تسجيل الخروج</div>
     </aside>
 
     <main class="main">
-      <div class="topbar"><h2 id="welcomeText">مرحبًا 👋</h2></div>
-
-      <div id="foldersView">
-        <div class="folder-grid" id="folderGrid"></div>
+      <div class="topbar">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="mobile-menu-btn" id="menuBtn">☰</button>
+          <h2 id="welcomeText" style="margin:0;">مرحبًا 👋</h2>
+        </div>
+        <div class="top-controls">
+          <button class="icon-btn" id="langToggle" onclick="betaToggleLang()">EN</button>
+          <button class="icon-btn" id="themeToggle" onclick="betaToggleTheme()">☀️</button>
+        </div>
       </div>
 
-      <div id="filesView" style="display:none;">
-        <button class="btn secondary" style="width:auto;margin-bottom:16px;" id="backBtn">⬅ رجوع للفولدرات</button>
-        <div class="file-list" id="filesList"></div>
+      <!-- الصفحة الرئيسية -->
+      <div id="viewHome">
+        <div id="foldersView">
+          <div class="folder-grid" id="folderGrid"></div>
+        </div>
+
+        <div id="filesView" style="display:none;">
+          <button class="btn secondary" style="width:auto;margin-bottom:16px;" id="backBtn">⬅ رجوع للفولدرات</button>
+          <div class="file-list" id="filesList"></div>
+        </div>
+      </div>
+
+      <!-- حسابي -->
+      <div id="viewAccount" style="display:none;">
+        <div class="card">
+          <table>
+            <tbody>
+              <tr><th>الاسم الكامل</th><td id="accFullName">-</td></tr>
+              <tr><th>رقم الهاتف</th><td id="accPhone">-</td></tr>
+              <tr><th>رقم الجلوس</th><td id="accSeat">-</td></tr>
+              <tr><th>نوع الحساب</th><td id="accRole">-</td></tr>
+              <tr><th>حالة الحساب</th><td id="accStatus">-</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </main>
   </div>
@@ -50,6 +80,7 @@
     </div>
   </div>
 
+  <script type="module" src="js/theme-lang.js"></script>
   <script type="module" src="js/student.js"></script>
 </body>
 </html>
