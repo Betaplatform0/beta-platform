@@ -23,7 +23,6 @@ function api(pathname, options = {}) {
   });
 }
 
-// ------------ استخراج معلومات مبسّطة عن الجهاز من الـ User-Agent ------------
 function parseUserAgent(ua) {
   if (!ua) return { browser: "غير معروف", os: "غير معروف" };
   let browser = "غير معروف";
@@ -206,14 +205,31 @@ document.getElementById("uploadBtn").addEventListener("click", async () => {
   }
 });
 
-// ------------ الصلاحيات (تظهر بس للفولدرات الخاصة) ------------
+// ------------ الصلاحيات (مع بحث عن الطالب) ------------
 async function loadPermissionsTab() {
   if (foldersCache.length === 0) await loadFolders();
   const privateFolders = foldersCache.filter((f) => f.type !== "public");
   const { accounts } = await api("/api/admin/accounts");
   const students = accounts.filter((a) => a.role === "student");
+
   const select = document.getElementById("permStudentSelect");
-  select.innerHTML = students.map((s) => `<option value="${s.id}">${s.fullName} (${s.phone})</option>`).join("");
+  const searchInput = document.getElementById("permStudentSearch");
+
+  function renderOptions(list) {
+    select.innerHTML = list.map((s) => `<option value="${s.id}">${s.fullName} (${s.phone})</option>`).join("");
+  }
+
+  renderOptions(students);
+
+  searchInput.oninput = () => {
+    const q = searchInput.value.trim().toLowerCase();
+    const filtered = students.filter(
+      (s) => (s.fullName || "").toLowerCase().includes(q) || (s.phone || "").includes(q) || (s.seatNumber || "").toLowerCase().includes(q)
+    );
+    renderOptions(filtered);
+    if (filtered[0]) renderPerms();
+    else document.getElementById("permFoldersList").innerHTML = "<p style='color:var(--muted)'>لا يوجد طالب مطابق.</p>";
+  };
 
   async function renderPerms() {
     const studentId = select.value;
@@ -234,7 +250,7 @@ async function loadPermissionsTab() {
       .join("");
   }
 
-  select.addEventListener("change", renderPerms);
+  select.onchange = renderPerms;
   if (students[0]) renderPerms();
 
   document.getElementById("savePermsBtn").onclick = async () => {
