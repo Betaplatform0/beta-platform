@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Beta | الطالب</title>
 <link rel="stylesheet" href="css/style.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -62,14 +63,19 @@
   <div class="pdf-overlay" id="pdfOverlay" style="display:none;">
     <div class="pdf-toolbar">
       <div>
+        <button id="prevPage">▶ السابق</button>
         <span id="pageInfo" style="color:#fff;margin:0 8px;"></span>
+        <button id="nextPage">التالي ◀</button>
       </div>
       <div>
+        <button id="zoomOut">－</button>
+        <button id="zoomIn">＋</button>
         <button id="fullscreenBtn">⛶ ملء الشاشة</button>
         <button id="closeViewer">✕ إغلاق</button>
       </div>
     </div>
     <div class="pdf-canvas-wrap" id="pdfCanvasWrap" oncontextmenu="return false;">
+      <canvas id="pdfCanvas"></canvas>
       <div class="watermark-layer" id="watermarkLayer"></div>
     </div>
   </div>
