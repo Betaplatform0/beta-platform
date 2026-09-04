@@ -57,51 +57,77 @@ router.post("/accounts/:id/remove-admin", requireAuth, requireActive, requireOwn
   return res.json({ ok: true });
 });
 
-// ================= الفولدرات (عامة / خاصة) =================
+// ================= الفولدرات (عامة/خاصة + متداخلة) =================
 
+// كل الفولدرات (فلات، بيتحسب الشجرة والصلاحيات في الواجهة)
 router.get("/folders", requireAuth, requireActive, async (req, res) => {
   const snap = await db().collection("folders").orderBy("createdAt", "asc").get();
   const folders = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   return res.json({ folders });
 });
 
-router.post("/folders", requireAuth, requireActive, requireOwner, async (req, res) => {
-  const { name, type } = req.body;
+// إنشاء فولدر (يدعم parentId اختياري لإنشاء فولدر فرعي) - Owner و Admin
+router.post("/folders", requireAuth, requireActive, requireAdmin, async (req, res) => {
+  const { name, type, parentId } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ message: "اسم الفولدر مطلوب." });
   const folderType = type === "public" ? "public" : "private";
+
+  let finalParentId = null;
+  if (parentId) {
+    const parentSnap = await db().collection("folders").doc(parentId).get();
+    if (!parentSnap.exists) return res.status(404).json({ message: "الفولدر الأب غير موجود." });
+    finalParentId = parentId;
+  }
+
   const docRef = await db().collection("folders").add({
     name: name.trim(),
     type: folderType,
+    parentId: finalParentId,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
   return res.json({ ok: true, id: docRef.id });
 });
 
-router.put("/folders/:id", requireAuth, requireActive, requireOwner, async (req, res) => {
-  const { name, type } = req.body;
+// تعديل اسم/نوع/فولدر أب (نقل) - Owner و Admin
+router.put("/folders/:id", requireAuth, requireActive, requireAdmin, async (req, res) => {
+  const { name, type, parentId } = req.body;
   const updates = {};
   if (name && name.trim()) updates.name = name.trim();
   if (type === "public" || type === "private") updates.type = type;
+  if (parentId !== undefined) {
+    if (parentId === req.params.id) return res.status(400).json({ message: "لا يمكن أن يكون الفولدر أبًا لنفسه." });
+    updates.parentId = parentId || null;
+  }
   if (Object.keys(updates).length === 0) return res.status(400).json({ message: "لا توجد بيانات للتحديث." });
   await db().collection("folders").doc(req.params.id).update(updates);
   return res.json({ ok: true });
 });
 
+// حذف فولدر (وكل الفولدرات الفرعية والملفات بداخله بشكل متكرر) - Owner فقط
 router.delete("/folders/:id", requireAuth, requireActive, requireOwner, async (req, res) => {
-  const filesSnap = await db().collection("files").where("folderId", "==", req.params.id).get();
   const fs = require("fs");
   const path = require("path");
   const UPLOAD_DIR = path.join(__dirname, "..", "uploads");
-  for (const doc of filesSnap.docs) {
-    const filePath = path.join(UPLOAD_DIR, doc.data().storedName);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    await doc.ref.delete();
+
+  async function deleteFolderRecursive(folderId) {
+    const filesSnap = await db().collection("files").where("folderId", "==", folderId).get();
+    for (const doc of filesSnap.docs) {
+      const filePath = path.join(UPLOAD_DIR, doc.data().storedName);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      await doc.ref.delete();
+    }
+    const childrenSnap = await db().collection("folders").where("parentId", "==", folderId).get();
+    for (const child of childrenSnap.docs) {
+      await deleteFolderRecursive(child.id);
+    }
+    await db().collection("folders").doc(folderId).delete();
   }
-  await db().collection("folders").doc(req.params.id).delete();
+
+  await deleteFolderRecursive(req.params.id);
   return res.json({ ok: true });
 });
 
-// ================= صلاحيات الطلاب (للفولدرات الخاصة فقط) =================
+// ================= صلاحيات الطلاب (لأي مستوى فولدر خاص، بشكل مستقل) =================
 
 router.get("/permissions/me", requireAuth, requireActive, async (req, res) => {
   const snap = await db().collection("permissions").doc(req.betaUser.uid).get();
