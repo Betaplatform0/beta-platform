@@ -10,36 +10,37 @@
   <div class="auth-wrapper">
     <div class="auth-card">
       <div class="auth-icon">📝</div>
-      <h1>إنشاء حساب جديد</h1>
-      <p class="auth-sub">سجل بياناتك وسيتم مراجعة حسابك قريبًا</p>
+      <h1 data-i18n="signupTitle">إنشاء حساب جديد</h1>
+      <p class="auth-sub" data-i18n="signupSub">سجل بياناتك وسيتم مراجعة حسابك قريبًا</p>
 
       <form id="signupForm">
         <div class="field">
-          <label>الاسم الكامل</label>
+          <label data-i18n="fullNameLabel">الاسم الكامل</label>
           <input type="text" id="fullName" placeholder="أدخل اسمك ثلاثي" required />
         </div>
         <div class="field">
-          <label>رقم الهاتف</label>
+          <label data-i18n="phoneLabel">رقم الهاتف</label>
           <input type="tel" id="phone" placeholder="01000000000" required />
         </div>
         <div class="field">
-          <label>رقم الجلوس</label>
+          <label data-i18n="seatLabel">رقم الجلوس</label>
           <input type="text" id="seatNumber" placeholder="أدخل رقم الجلوس" required />
         </div>
         <div class="field">
-          <label>كلمة المرور (6 أحرف على الأقل)</label>
+          <label data-i18n="passwordLabel">كلمة المرور (6 أحرف على الأقل)</label>
           <input type="password" id="password" minlength="6" placeholder="••••••••" required />
         </div>
         <div class="field">
-          <label>تأكيد كلمة المرور</label>
+          <label data-i18n="confirmPasswordLabel">تأكيد كلمة المرور</label>
           <input type="password" id="confirmPassword" minlength="6" placeholder="••••••••" required />
         </div>
-        <button type="submit" class="btn" id="signupBtn">تسجيل الحساب</button>
+        <button type="submit" class="btn" id="signupBtn" data-i18n="signupBtn">تسجيل الحساب</button>
         <div class="msg" id="msg"></div>
       </form>
 
       <div class="switch-link">
-        لديك حساب بالفعل؟ <a href="index.html">تسجيل الدخول</a>
+        <span data-i18n="haveAccount">لديك حساب بالفعل؟</span>
+        <a href="index.html" data-i18n="loginLink">تسجيل الدخول</a>
       </div>
     </div>
   </div>
@@ -49,6 +50,10 @@
       auth, db, createUserWithEmailAndPassword, doc, setDoc, getDocs, collection,
       phoneToPseudoEmail, serverTimestamp, signOut, BACKEND_URL
     } from "./js/firebase-config.js";
+    import { initTheme, initLang } from "./js/theme-lang.js";
+
+    initTheme();
+    initLang();
 
     const form = document.getElementById("signupForm");
     const msg = document.getElementById("msg");
