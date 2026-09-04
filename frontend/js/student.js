@@ -1,8 +1,12 @@
 import { guardPage } from "./auth-guard.js";
 import { BACKEND_URL } from "./firebase-config.js";
 import { openPdfViewer } from "./pdf-viewer.js";
+import { initTheme, initLang } from "./theme-lang.js";
 
 let currentUser = null;
+
+const roleLabel = { owner: "Owner", admin: "Admin", student: "Student" };
+const statusLabel = { pending: "قيد المراجعة", active: "مفعّل", disabled: "معطّل" };
 
 async function api(pathname) {
   const res = await fetch(`${BACKEND_URL}${pathname}`, {
@@ -56,8 +60,44 @@ document.getElementById("backBtn").addEventListener("click", () => {
   document.getElementById("foldersView").style.display = "block";
 });
 
+// ------------ التنقل بين "الرئيسية" و"حسابي" ------------
+document.querySelectorAll(".nav-item[data-view]").forEach((item) => {
+  item.addEventListener("click", () => {
+    document.querySelectorAll(".nav-item[data-view]").forEach((i) => i.classList.remove("active"));
+    item.classList.add("active");
+    document.getElementById("viewHome").style.display = item.dataset.view === "home" ? "block" : "none";
+    document.getElementById("viewAccount").style.display = item.dataset.view === "account" ? "block" : "none";
+    closeMobileMenu();
+  });
+});
+
+function renderAccount() {
+  document.getElementById("accFullName").textContent = currentUser.fullName || "-";
+  document.getElementById("accPhone").textContent = currentUser.phone || "-";
+  document.getElementById("accSeat").textContent = currentUser.seatNumber || "-";
+  document.getElementById("accRole").textContent = roleLabel[currentUser.role] || currentUser.role;
+  document.getElementById("accStatus").textContent = statusLabel[currentUser.status] || currentUser.status;
+}
+
+// ------------ القائمة الجانبية على الهاتف ------------
+const sidebar = document.getElementById("studentSidebar");
+const backdrop = document.getElementById("sidebarBackdrop");
+document.getElementById("menuBtn").addEventListener("click", () => {
+  sidebar.classList.add("open");
+  backdrop.classList.add("open");
+});
+backdrop.addEventListener("click", closeMobileMenu);
+function closeMobileMenu() {
+  sidebar.classList.remove("open");
+  backdrop.classList.remove("open");
+}
+
+// ------------ التهيئة ------------
 (async function init() {
+  initTheme();
+  initLang();
   currentUser = await guardPage(["student"]);
   document.getElementById("welcomeText").textContent = `مرحبًا ${currentUser.fullName} 👋`;
+  renderAccount();
   loadFolders();
 })();
