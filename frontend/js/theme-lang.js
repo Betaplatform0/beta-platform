@@ -1,4 +1,5 @@
-// إدارة الوضع الليلي/النهاري واللغة، وحفظها في المتصفح
+import { translatePage } from "./i18n.js";
+
 const THEME_KEY = "beta_theme";
 const LANG_KEY = "beta_lang";
 
@@ -30,6 +31,7 @@ export function applyLang(lang) {
   localStorage.setItem(LANG_KEY, lang);
   const btn = document.getElementById("langToggle");
   if (btn) btn.textContent = lang === "ar" ? "EN" : "AR";
+  translatePage(lang);
 }
 
 export function toggleLang() {
