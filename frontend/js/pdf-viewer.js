@@ -52,8 +52,16 @@ function buildWatermark(user) {
 async function renderPage(num) {
   const page = await pdfDoc.getPage(num);
   const viewport = page.getViewport({ scale: currentScale });
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
+
+  const dpr = window.devicePixelRatio || 1;
+
+  canvas.width = Math.floor(viewport.width * dpr);
+  canvas.height = Math.floor(viewport.height * dpr);
+  canvas.style.width = `${Math.floor(viewport.width)}px`;
+  canvas.style.height = `${Math.floor(viewport.height)}px`;
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
   await page.render({ canvasContext: ctx, viewport }).promise;
   pageInfo.textContent = `صفحة ${num} / ${pdfDoc.numPages}`;
 }
