@@ -4,6 +4,7 @@ import { initTheme, initLang } from "./theme-lang.js";
 
 let currentUser = null;
 let foldersCache = [];
+let folderStack = []; // {id, name} لكل مستوى دخلنا فيه
 
 const roleLabel = { owner: "Owner", admin: "Admin", student: "Student" };
 const statusLabel = { pending: "قيد المراجعة", active: "مفعّل", disabled: "معطّل" };
@@ -44,6 +45,18 @@ function parseUserAgent(ua) {
   return { browser, os };
 }
 
+function folderPathLabel(folder) {
+  const parts = [folder.name];
+  let current = folder;
+  while (current.parentId) {
+    const parent = foldersCache.find((f) => f.id === current.parentId);
+    if (!parent) break;
+    parts.unshift(parent.name);
+    current = parent;
+  }
+  return parts.join(" / ");
+}
+
 // ------------ تبديل التبويبات ------------
 document.querySelectorAll(".nav-item[data-tab]").forEach((item) => {
   item.addEventListener("click", () => {
@@ -52,7 +65,7 @@ document.querySelectorAll(".nav-item[data-tab]").forEach((item) => {
     document.querySelectorAll("main > section").forEach((s) => (s.style.display = "none"));
     document.getElementById(`tab-${item.dataset.tab}`).style.display = "block";
     if (item.dataset.tab === "accounts") loadAccounts();
-    if (item.dataset.tab === "folders") loadFolders();
+    if (item.dataset.tab === "folders") { folderStack = []; loadFolders(); }
     if (item.dataset.tab === "files") loadFilesTab();
     if (item.dataset.tab === "permissions") loadPermissionsTab();
     if (item.dataset.tab === "devices") loadDevices();
@@ -106,64 +119,130 @@ window.betaDelete = async (id) => {
   loadAccounts();
 };
 
-// ------------ الفولدرات ------------
-async function loadFolders() {
+// ------------ الفولدرات (شجرية) ------------
+async function fetchAllFolders() {
   const { folders } = await api("/api/admin/folders");
   foldersCache = folders;
+}
+
+function currentParentId() {
+  return folderStack.length ? folderStack[folderStack.length - 1].id : null;
+}
+
+function renderBreadcrumb() {
+  const bc = document.getElementById("folderBreadcrumb");
+  const rootLabel = `<span class="breadcrumb-item" data-index="-1" style="cursor:pointer;color:var(--primary);">📁 الرئيسية</span>`;
+  const items = folderStack.map((f, i) => `<span> / </span><span class="breadcrumb-item" data-index="${i}" style="cursor:pointer;color:var(--primary);">${f.name}</span>`);
+  bc.innerHTML = rootLabel + items.join("");
+  bc.querySelectorAll(".breadcrumb-item").forEach((el) => {
+    el.addEventListener("click", () => {
+      const idx = parseInt(el.dataset.index, 10);
+      folderStack = idx === -1 ? [] : folderStack.slice(0, idx + 1);
+      renderFolderView();
+    });
+  });
+}
+
+function renderFolderView() {
+  renderBreadcrumb();
+  const parentId = currentParentId();
+  const children = foldersCache.filter((f) => (f.parentId || null) === parentId);
   const grid = document.getElementById("folderGrid");
-  grid.innerHTML = folders
+
+  if (children.length === 0) {
+    grid.innerHTML = "<p style='color:var(--muted)'>لا توجد فولدرات هنا بعد.</p>";
+    return;
+  }
+
+  grid.innerHTML = children
     .map(
-      (f) => `<div class="folder-card">
+      (f) => `<div class="folder-card" data-id="${f.id}">
         <div class="icon">${f.type === "public" ? "🌐" : "🔒"}</div>
         <div>${f.name}</div>
         <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">${f.type === "public" ? "عام" : "خاص"}</div>
         <div style="margin-top:10px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
-          <button class="btn small secondary" onclick="betaRenameFolder('${f.id}','${f.name.replace(/'/g, "\\'")}')">تعديل الاسم</button>
-          <button class="btn small secondary" onclick="betaToggleFolderType('${f.id}','${f.type}')">${f.type === "public" ? "اجعله خاص" : "اجعله عام"}</button>
-          <button class="btn small danger" onclick="betaDeleteFolder('${f.id}')">حذف</button>
+          <button class="btn small secondary" data-action="rename" data-id="${f.id}" data-name="${f.name.replace(/"/g, "&quot;")}">تعديل الاسم</button>
+          <button class="btn small secondary" data-action="toggle" data-id="${f.id}" data-type="${f.type}">${f.type === "public" ? "اجعله خاص" : "اجعله عام"}</button>
+          <button class="btn small danger" data-action="delete" data-id="${f.id}">حذف</button>
         </div>
       </div>`
     )
     .join("");
+
+  grid.querySelectorAll(".folder-card").forEach((card) => {
+    card.addEventListener("click", (e) => {
+      if (e.target.closest("button")) return;
+      const id = card.dataset.id;
+      const folder = foldersCache.find((f) => f.id === id);
+      folderStack.push({ id: folder.id, name: folder.name });
+      renderFolderView();
+    });
+  });
+
+  grid.querySelectorAll('button[data-action="rename"]').forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const name = prompt("الاسم الجديد للفولدر:", btn.dataset.name);
+      if (!name || !name.trim()) return;
+      await api(`/api/admin/folders/${btn.dataset.id}`, { method: "PUT", body: JSON.stringify({ name: name.trim() }) });
+      await fetchAllFolders();
+      renderFolderView();
+    });
+  });
+
+  grid.querySelectorAll('button[data-action="toggle"]').forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const newType = btn.dataset.type === "public" ? "private" : "public";
+      await api(`/api/admin/folders/${btn.dataset.id}`, { method: "PUT", body: JSON.stringify({ type: newType }) });
+      await fetchAllFolders();
+      renderFolderView();
+    });
+  });
+
+  grid.querySelectorAll('button[data-action="delete"]').forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      if (!confirm("سيتم حذف الفولدر وكل الفولدرات الفرعية والملفات بداخله. متابعة؟")) return;
+      await api(`/api/admin/folders/${btn.dataset.id}`, { method: "DELETE" });
+      await fetchAllFolders();
+      renderFolderView();
+    });
+  });
+}
+
+async function loadFolders() {
+  await fetchAllFolders();
+  renderFolderView();
 }
 
 document.getElementById("addFolderBtn").addEventListener("click", async () => {
   const input = document.getElementById("newFolderName");
   const typeSelect = document.getElementById("newFolderType");
   if (!input.value.trim()) return;
-  await api("/api/admin/folders", { method: "POST", body: JSON.stringify({ name: input.value.trim(), type: typeSelect.value }) });
+  await api("/api/admin/folders", {
+    method: "POST",
+    body: JSON.stringify({ name: input.value.trim(), type: typeSelect.value, parentId: currentParentId() }),
+  });
   input.value = "";
-  loadFolders();
+  await fetchAllFolders();
+  renderFolderView();
 });
 
-window.betaRenameFolder = async (id, oldName) => {
-  const name = prompt("الاسم الجديد للفولدر:", oldName);
-  if (!name || !name.trim()) return;
-  await api(`/api/admin/folders/${id}`, { method: "PUT", body: JSON.stringify({ name: name.trim() }) });
-  loadFolders();
-};
-window.betaToggleFolderType = async (id, currentType) => {
-  const newType = currentType === "public" ? "private" : "public";
-  await api(`/api/admin/folders/${id}`, { method: "PUT", body: JSON.stringify({ type: newType }) });
-  loadFolders();
-};
-window.betaDeleteFolder = async (id) => {
-  if (!confirm("سيتم حذف الفولدر وكل الملفات بداخله. متابعة؟")) return;
-  await api(`/api/admin/folders/${id}`, { method: "DELETE" });
-  loadFolders();
-};
-
-// ------------ الملفات ------------
+// ------------ الملفات (اختيار فولدر بالمسار الكامل) ------------
 async function loadFilesTab() {
-  if (foldersCache.length === 0) await loadFolders();
+  if (foldersCache.length === 0) await fetchAllFolders();
   const select = document.getElementById("uploadFolderSelect");
-  select.innerHTML = foldersCache.map((f) => `<option value="${f.id}">${f.name} (${f.type === "public" ? "عام" : "خاص"})</option>`).join("");
-  if (foldersCache[0]) loadFilesForFolder(foldersCache[0].id);
-  select.addEventListener("change", () => loadFilesForFolder(select.value));
+  select.innerHTML = foldersCache
+    .map((f) => `<option value="${f.id}">${folderPathLabel(f)} (${f.type === "public" ? "عام" : "خاص"})</option>`)
+    .join("");
+  if (foldersCache[0]) loadFilesForFolder(select.value);
+  select.onchange = () => loadFilesForFolder(select.value);
 }
 
 async function loadFilesForFolder(folderId) {
   const list = document.getElementById("filesList");
+  if (!folderId) { list.innerHTML = "<p style='color:var(--muted)'>لا توجد فولدرات بعد.</p>"; return; }
   list.innerHTML = "جارٍ التحميل...";
   const res = await fetch(`${BACKEND_URL}/api/files/by-folder/${folderId}`, {
     headers: { Authorization: `Bearer ${currentUser.idToken}` },
@@ -178,6 +257,7 @@ document.getElementById("uploadBtn").addEventListener("click", async () => {
   const folderId = document.getElementById("uploadFolderSelect").value;
   const fileInput = document.getElementById("uploadFileInput");
   const msg = document.getElementById("uploadMsg");
+  if (!folderId) { msg.textContent = "أنشئ فولدر أولًا من تبويب الفولدرات."; msg.className = "msg error"; return; }
   if (!fileInput.files[0]) { msg.textContent = "اختر ملفًا أولًا."; msg.className = "msg error"; return; }
 
   const formData = new FormData();
@@ -205,9 +285,9 @@ document.getElementById("uploadBtn").addEventListener("click", async () => {
   }
 });
 
-// ------------ الصلاحيات (مع بحث عن الطالب) ------------
+// ------------ الصلاحيات (مع بحث + مسار كامل للفولدرات) ------------
 async function loadPermissionsTab() {
-  if (foldersCache.length === 0) await loadFolders();
+  if (foldersCache.length === 0) await fetchAllFolders();
   const privateFolders = foldersCache.filter((f) => f.type !== "public");
   const { accounts } = await api("/api/admin/accounts");
   const students = accounts.filter((a) => a.role === "student");
@@ -244,7 +324,7 @@ async function loadPermissionsTab() {
       .map(
         (f) => `<label style="display:flex;align-items:center;gap:8px;padding:8px 0;">
           <input type="checkbox" value="${f.id}" ${allowedFolders.includes(f.id) ? "checked" : ""} />
-          ${f.name}
+          ${folderPathLabel(f)}
         </label>`
       )
       .join("");
