@@ -58,11 +58,11 @@ export async function openPdfViewer(fileId, user) {
 
     pdfDoc = await pdfjsLib.getDocument({
       data: buffer,
-      cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",
+      cMapUrl: "https://unpkg.com/pdfjs-dist@3.11.174/cmaps/",
       cMapPacked: true,
-      standardFontDataUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/standard_fonts/",
+      standardFontDataUrl: "https://unpkg.com/pdfjs-dist@3.11.174/standard_fonts/",
       disableFontFace: false,
-      useSystemFonts: true,
+      useSystemFonts: false,
     }).promise;
 
     currentPage = 1;
@@ -90,7 +90,6 @@ async function renderPage(num) {
   const page = await pdfDoc.getPage(num);
   const viewport = page.getViewport({ scale: currentScale });
 
-  // رفع دقة الرسم لأقصى درجة ممكنة لوضوح أفضل للنص
   const dpr = Math.max(window.devicePixelRatio || 1, 2.5);
 
   canvas.width = Math.floor(viewport.width * dpr);
