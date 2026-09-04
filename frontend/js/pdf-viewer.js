@@ -1,13 +1,18 @@
 import { BACKEND_URL } from "./firebase-config.js";
 
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+let pdfDoc = null;
+let currentPage = 1;
+let currentScale = 1;
+
 const overlay = document.getElementById("pdfOverlay");
-const canvasWrap = document.getElementById("pdfCanvasWrap");
+const canvas = document.getElementById("pdfCanvas");
+const ctx = canvas.getContext("2d");
 const pageInfo = document.getElementById("pageInfo");
 const watermarkLayer = document.getElementById("watermarkLayer");
 
 let focusShield = null;
-let embedEl = null;
-let currentObjectUrl = null;
 
 function ensureFocusShield() {
   if (focusShield) return focusShield;
@@ -27,8 +32,6 @@ function showContentAgain() {
   if (focusShield) focusShield.style.display = "none";
 }
 
-// نعتمد فقط على visibilitychange (التبديل الفعلي لتطبيق/تبويب تاني)
-// وليس blur (بيحصل بسهولة من غير خطورة حقيقية، زي فتح Keyboard أو نافذة نظام مؤقتة)
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) hideContentForSafety();
   else showContentAgain();
@@ -39,7 +42,6 @@ export async function openPdfViewer(fileId, user) {
   buildWatermark(user);
   ensureFocusShield();
   showContentAgain();
-  pageInfo.textContent = "جارٍ التحميل...";
 
   try {
     const res = await fetch(`${BACKEND_URL}/api/files/${fileId}/stream`, {
@@ -51,20 +53,24 @@ export async function openPdfViewer(fileId, user) {
       closeViewer();
       return;
     }
-    const blob = await res.blob();
+    const buffer = await res.arrayBuffer();
 
-    if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
-    currentObjectUrl = URL.createObjectURL(blob);
+    pdfDoc = await pdfjsLib.getDocument({
+      data: buffer,
+      cMapUrl: "https://unpkg.com/pdfjs-dist@3.11.174/cmaps/",
+      cMapPacked: true,
+      standardFontDataUrl: "https://unpkg.com/pdfjs-dist@3.11.174/standard_fonts/",
+      disableFontFace: true,
+    }).promise;
 
-    if (embedEl) embedEl.remove();
-    embedEl = document.createElement("embed");
-    embedEl.id = "pdfNativeEmbed";
-    embedEl.type = "application/pdf";
-    embedEl.style.cssText = "width:100%;height:100%;border:none;background:#fff;";
-    embedEl.src = currentObjectUrl;
-    canvasWrap.insertBefore(embedEl, watermarkLayer);
+    currentPage = 1;
 
-    pageInfo.textContent = "";
+    const firstPage = await pdfDoc.getPage(1);
+    const naturalViewport = firstPage.getViewport({ scale: 1 });
+    const wrapWidth = document.getElementById("pdfCanvasWrap").clientWidth - 40;
+    currentScale = wrapWidth / naturalViewport.width;
+
+    renderPage(currentPage);
   } catch (err) {
     console.error(err);
     alert("تعذر تحميل الملف.");
@@ -78,6 +84,36 @@ function buildWatermark(user) {
   watermarkLayer.innerHTML = cells;
 }
 
+async function renderPage(num) {
+  const page = await pdfDoc.getPage(num);
+  const viewport = page.getViewport({ scale: currentScale });
+
+  const dpr = Math.max(window.devicePixelRatio || 1, 2);
+
+  canvas.width = Math.floor(viewport.width * dpr);
+  canvas.height = Math.floor(viewport.height * dpr);
+  canvas.style.width = `${Math.floor(viewport.width)}px`;
+  canvas.style.height = `${Math.floor(viewport.height)}px`;
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  pageInfo.textContent = `صفحة ${num} / ${pdfDoc.numPages}`;
+}
+
+document.getElementById("prevPage").addEventListener("click", () => {
+  if (currentPage > 1) { currentPage--; renderPage(currentPage); }
+});
+document.getElementById("nextPage").addEventListener("click", () => {
+  if (pdfDoc && currentPage < pdfDoc.numPages) { currentPage++; renderPage(currentPage); }
+});
+document.getElementById("zoomIn").addEventListener("click", () => { currentScale += 0.2; renderPage(currentPage); });
+document.getElementById("zoomOut").addEventListener("click", () => {
+  currentScale = Math.max(0.5, currentScale - 0.2);
+  renderPage(currentPage);
+});
 document.getElementById("fullscreenBtn").addEventListener("click", () => {
   if (overlay.requestFullscreen) overlay.requestFullscreen();
 });
@@ -85,8 +121,7 @@ document.getElementById("closeViewer").addEventListener("click", closeViewer);
 
 function closeViewer() {
   overlay.style.display = "none";
-  if (embedEl) { embedEl.remove(); embedEl = null; }
-  if (currentObjectUrl) { URL.revokeObjectURL(currentObjectUrl); currentObjectUrl = null; }
+  pdfDoc = null;
   showContentAgain();
 }
 
