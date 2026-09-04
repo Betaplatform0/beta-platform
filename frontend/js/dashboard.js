@@ -1,5 +1,6 @@
 import { guardPage } from "./auth-guard.js";
 import { BACKEND_URL } from "./firebase-config.js";
+import { initTheme, initLang } from "./theme-lang.js";
 
 let currentUser = null;
 let foldersCache = [];
@@ -20,6 +21,28 @@ function api(pathname, options = {}) {
     if (!r.ok) throw new Error(data.message || "حدث خطأ");
     return data;
   });
+}
+
+// ------------ استخراج معلومات مبسّطة عن الجهاز من الـ User-Agent ------------
+function parseUserAgent(ua) {
+  if (!ua) return { browser: "غير معروف", os: "غير معروف" };
+  let browser = "غير معروف";
+  if (ua.includes("Edg/")) browser = "Microsoft Edge";
+  else if (ua.includes("Chrome/") && !ua.includes("OPR")) browser = "Google Chrome";
+  else if (ua.includes("Firefox/")) browser = "Mozilla Firefox";
+  else if (ua.includes("Safari/") && !ua.includes("Chrome")) browser = "Safari";
+  else if (ua.includes("OPR")) browser = "Opera";
+
+  let os = "غير معروف";
+  if (ua.includes("Windows NT 10")) os = "Windows 10/11";
+  else if (ua.includes("Windows NT 6.1")) os = "Windows 7";
+  else if (ua.includes("Windows")) os = "Windows";
+  else if (ua.includes("Android")) os = "Android";
+  else if (ua.includes("iPhone") || ua.includes("iPad")) os = "iOS";
+  else if (ua.includes("Mac OS X")) os = "macOS";
+  else if (ua.includes("Linux")) os = "Linux";
+
+  return { browser, os };
 }
 
 // ------------ تبديل التبويبات ------------
@@ -92,10 +115,12 @@ async function loadFolders() {
   grid.innerHTML = folders
     .map(
       (f) => `<div class="folder-card">
-        <div class="icon">📁</div>
+        <div class="icon">${f.type === "public" ? "🌐" : "🔒"}</div>
         <div>${f.name}</div>
-        <div style="margin-top:10px;display:flex;gap:6px;justify-content:center;">
-          <button class="btn small secondary" onclick="betaRenameFolder('${f.id}','${f.name.replace(/'/g, "\\'")}')">تعديل</button>
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">${f.type === "public" ? "عام" : "خاص"}</div>
+        <div style="margin-top:10px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+          <button class="btn small secondary" onclick="betaRenameFolder('${f.id}','${f.name.replace(/'/g, "\\'")}')">تعديل الاسم</button>
+          <button class="btn small secondary" onclick="betaToggleFolderType('${f.id}','${f.type}')">${f.type === "public" ? "اجعله خاص" : "اجعله عام"}</button>
           <button class="btn small danger" onclick="betaDeleteFolder('${f.id}')">حذف</button>
         </div>
       </div>`
@@ -105,8 +130,9 @@ async function loadFolders() {
 
 document.getElementById("addFolderBtn").addEventListener("click", async () => {
   const input = document.getElementById("newFolderName");
+  const typeSelect = document.getElementById("newFolderType");
   if (!input.value.trim()) return;
-  await api("/api/admin/folders", { method: "POST", body: JSON.stringify({ name: input.value.trim() }) });
+  await api("/api/admin/folders", { method: "POST", body: JSON.stringify({ name: input.value.trim(), type: typeSelect.value }) });
   input.value = "";
   loadFolders();
 });
@@ -115,6 +141,11 @@ window.betaRenameFolder = async (id, oldName) => {
   const name = prompt("الاسم الجديد للفولدر:", oldName);
   if (!name || !name.trim()) return;
   await api(`/api/admin/folders/${id}`, { method: "PUT", body: JSON.stringify({ name: name.trim() }) });
+  loadFolders();
+};
+window.betaToggleFolderType = async (id, currentType) => {
+  const newType = currentType === "public" ? "private" : "public";
+  await api(`/api/admin/folders/${id}`, { method: "PUT", body: JSON.stringify({ type: newType }) });
   loadFolders();
 };
 window.betaDeleteFolder = async (id) => {
@@ -127,7 +158,7 @@ window.betaDeleteFolder = async (id) => {
 async function loadFilesTab() {
   if (foldersCache.length === 0) await loadFolders();
   const select = document.getElementById("uploadFolderSelect");
-  select.innerHTML = foldersCache.map((f) => `<option value="${f.id}">${f.name}</option>`).join("");
+  select.innerHTML = foldersCache.map((f) => `<option value="${f.id}">${f.name} (${f.type === "public" ? "عام" : "خاص"})</option>`).join("");
   if (foldersCache[0]) loadFilesForFolder(foldersCache[0].id);
   select.addEventListener("change", () => loadFilesForFolder(select.value));
 }
@@ -175,9 +206,10 @@ document.getElementById("uploadBtn").addEventListener("click", async () => {
   }
 });
 
-// ------------ الصلاحيات ------------
+// ------------ الصلاحيات (تظهر بس للفولدرات الخاصة) ------------
 async function loadPermissionsTab() {
   if (foldersCache.length === 0) await loadFolders();
+  const privateFolders = foldersCache.filter((f) => f.type !== "public");
   const { accounts } = await api("/api/admin/accounts");
   const students = accounts.filter((a) => a.role === "student");
   const select = document.getElementById("permStudentSelect");
@@ -188,7 +220,11 @@ async function loadPermissionsTab() {
     if (!studentId) return;
     const { allowedFolders } = await api(`/api/admin/permissions/${studentId}`);
     const container = document.getElementById("permFoldersList");
-    container.innerHTML = foldersCache
+    if (privateFolders.length === 0) {
+      container.innerHTML = "<p style='color:var(--muted)'>لا توجد فولدرات خاصة حاليًا (كل الفولدرات عامة).</p>";
+      return;
+    }
+    container.innerHTML = privateFolders
       .map(
         (f) => `<label style="display:flex;align-items:center;gap:8px;padding:8px 0;">
           <input type="checkbox" value="${f.id}" ${allowedFolders.includes(f.id) ? "checked" : ""} />
@@ -221,14 +257,17 @@ async function loadDevices() {
   const { devices } = await api("/api/admin/devices");
   const tbody = document.getElementById("devicesTable");
   tbody.innerHTML = devices
-    .map(
-      (d) => `<tr>
-        <td>${d.userId}</td>
-        <td style="font-size:0.75rem;">${d.deviceId}</td>
-        <td>${d.linkedAt ? new Date(d.linkedAt._seconds * 1000).toLocaleString("ar-EG") : "-"}</td>
+    .map((d) => {
+      const info = parseUserAgent(d.userAgent);
+      const time = d.linkedAt && d.linkedAt._seconds ? new Date(d.linkedAt._seconds * 1000).toLocaleString("ar-EG") : "-";
+      return `<tr>
+        <td>${d.userName}</td>
+        <td>${info.os}</td>
+        <td>${info.browser}</td>
+        <td>${time}</td>
         <td><button class="btn small danger" onclick="betaResetDevice('${d.userId}')">إعادة تعيين</button></td>
-      </tr>`
-    )
+      </tr>`;
+    })
     .join("");
 }
 
@@ -240,6 +279,8 @@ window.betaResetDevice = async (userId) => {
 
 // ------------ التهيئة ------------
 (async function init() {
+  initTheme();
+  initLang();
   currentUser = await guardPage(["owner", "admin"]);
   document.getElementById("welcomeText").textContent = `مرحبًا ${currentUser.fullName} 👋`;
   loadStats();
