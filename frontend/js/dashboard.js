@@ -4,7 +4,7 @@ import { initTheme, initLang } from "./theme-lang.js";
 
 let currentUser = null;
 let foldersCache = [];
-let folderStack = []; // {id, name} لكل مستوى دخلنا فيه
+let folderStack = [];
 
 const roleLabel = { owner: "Owner", admin: "Admin", student: "Student" };
 const statusLabel = { pending: "قيد المراجعة", active: "مفعّل", disabled: "معطّل" };
@@ -115,8 +115,12 @@ window.betaMakeAdmin = async (id) => { await api(`/api/admin/accounts/${id}/make
 window.betaRemoveAdmin = async (id) => { await api(`/api/admin/accounts/${id}/remove-admin`, { method: "POST" }); loadAccounts(); };
 window.betaDelete = async (id) => {
   if (!confirm("هل أنت متأكد من حذف هذا الحساب نهائيًا؟")) return;
-  await api(`/api/admin/accounts/${id}`, { method: "DELETE" });
-  loadAccounts();
+  try {
+    await api(`/api/admin/accounts/${id}`, { method: "DELETE" });
+    loadAccounts();
+  } catch (err) {
+    alert("فشل حذف الحساب: " + err.message);
+  }
 };
 
 // ------------ الفولدرات (شجرية) ------------
@@ -184,9 +188,13 @@ function renderFolderView() {
       e.stopPropagation();
       const name = prompt("الاسم الجديد للفولدر:", btn.dataset.name);
       if (!name || !name.trim()) return;
-      await api(`/api/admin/folders/${btn.dataset.id}`, { method: "PUT", body: JSON.stringify({ name: name.trim() }) });
-      await fetchAllFolders();
-      renderFolderView();
+      try {
+        await api(`/api/admin/folders/${btn.dataset.id}`, { method: "PUT", body: JSON.stringify({ name: name.trim() }) });
+        await fetchAllFolders();
+        renderFolderView();
+      } catch (err) {
+        alert("فشل التعديل: " + err.message);
+      }
     });
   });
 
@@ -194,9 +202,13 @@ function renderFolderView() {
     btn.addEventListener("click", async (e) => {
       e.stopPropagation();
       const newType = btn.dataset.type === "public" ? "private" : "public";
-      await api(`/api/admin/folders/${btn.dataset.id}`, { method: "PUT", body: JSON.stringify({ type: newType }) });
-      await fetchAllFolders();
-      renderFolderView();
+      try {
+        await api(`/api/admin/folders/${btn.dataset.id}`, { method: "PUT", body: JSON.stringify({ type: newType }) });
+        await fetchAllFolders();
+        renderFolderView();
+      } catch (err) {
+        alert("فشل تغيير نوع الفولدر: " + err.message);
+      }
     });
   });
 
@@ -204,9 +216,13 @@ function renderFolderView() {
     btn.addEventListener("click", async (e) => {
       e.stopPropagation();
       if (!confirm("سيتم حذف الفولدر وكل الفولدرات الفرعية والملفات بداخله. متابعة؟")) return;
-      await api(`/api/admin/folders/${btn.dataset.id}`, { method: "DELETE" });
-      await fetchAllFolders();
-      renderFolderView();
+      try {
+        await api(`/api/admin/folders/${btn.dataset.id}`, { method: "DELETE" });
+        await fetchAllFolders();
+        renderFolderView();
+      } catch (err) {
+        alert("فشل حذف الفولدر: " + err.message);
+      }
     });
   });
 }
@@ -220,16 +236,20 @@ document.getElementById("addFolderBtn").addEventListener("click", async () => {
   const input = document.getElementById("newFolderName");
   const typeSelect = document.getElementById("newFolderType");
   if (!input.value.trim()) return;
-  await api("/api/admin/folders", {
-    method: "POST",
-    body: JSON.stringify({ name: input.value.trim(), type: typeSelect.value, parentId: currentParentId() }),
-  });
-  input.value = "";
-  await fetchAllFolders();
-  renderFolderView();
+  try {
+    await api("/api/admin/folders", {
+      method: "POST",
+      body: JSON.stringify({ name: input.value.trim(), type: typeSelect.value, parentId: currentParentId() }),
+    });
+    input.value = "";
+    await fetchAllFolders();
+    renderFolderView();
+  } catch (err) {
+    alert("فشل إنشاء الفولدر: " + err.message);
+  }
 });
 
-// ------------ الملفات (اختيار فولدر بالمسار الكامل) ------------
+// ------------ الملفات (مع زرار حذف) ------------
 async function loadFilesTab() {
   if (foldersCache.length === 0) await fetchAllFolders();
   const select = document.getElementById("uploadFolderSelect");
@@ -244,13 +264,35 @@ async function loadFilesForFolder(folderId) {
   const list = document.getElementById("filesList");
   if (!folderId) { list.innerHTML = "<p style='color:var(--muted)'>لا توجد فولدرات بعد.</p>"; return; }
   list.innerHTML = "جارٍ التحميل...";
-  const res = await fetch(`${BACKEND_URL}/api/files/by-folder/${folderId}`, {
-    headers: { Authorization: `Bearer ${currentUser.idToken}` },
-  });
-  const data = await res.json();
-  list.innerHTML = (data.files || [])
-    .map((f) => `<div class="file-row"><span>📄 ${f.displayName}</span><span>${(f.sizeBytes / 1024 / 1024).toFixed(2)} MB</span></div>`)
-    .join("") || "<p style='color:var(--muted)'>لا توجد ملفات بعد.</p>";
+  try {
+    const data = await api(`/api/files/by-folder/${folderId}`);
+    list.innerHTML =
+      (data.files || [])
+        .map(
+          (f) => `<div class="file-row">
+            <span>📄 ${f.displayName}</span>
+            <span style="display:flex;align-items:center;gap:10px;">
+              ${(f.sizeBytes / 1024 / 1024).toFixed(2)} MB
+              <button class="btn small danger" data-action="delete-file" data-id="${f.id}" data-folder="${folderId}">حذف</button>
+            </span>
+          </div>`
+        )
+        .join("") || "<p style='color:var(--muted)'>لا توجد ملفات بعد.</p>";
+
+    list.querySelectorAll('button[data-action="delete-file"]').forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("هل أنت متأكد من حذف هذا الملف؟")) return;
+        try {
+          await api(`/api/files/${btn.dataset.id}`, { method: "DELETE" });
+          loadFilesForFolder(btn.dataset.folder);
+        } catch (err) {
+          alert("فشل حذف الملف: " + err.message);
+        }
+      });
+    });
+  } catch (err) {
+    list.innerHTML = `<p style='color:var(--danger)'>تعذر جلب الملفات: ${err.message}</p>`;
+  }
 }
 
 document.getElementById("uploadBtn").addEventListener("click", async () => {
@@ -348,7 +390,7 @@ async function loadPermissionsTab() {
   };
 }
 
-// ------------ الأجهزة ------------
+// ------------ الأجهزة (مع رسائل خطأ واضحة) ------------
 async function loadDevices() {
   const { devices } = await api("/api/admin/devices");
   const tbody = document.getElementById("devicesTable");
@@ -365,12 +407,21 @@ async function loadDevices() {
       </tr>`;
     })
     .join("");
+
+  if (devices.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--muted);text-align:center;">لا توجد أجهزة مرتبطة بعد.</td></tr>`;
+  }
 }
 
 window.betaResetDevice = async (userId) => {
   if (!confirm("سيتمكن المستخدم من تسجيل الدخول من جهاز جديد. متابعة؟")) return;
-  await api(`/api/device/reset/${userId}`, { method: "POST" });
-  loadDevices();
+  try {
+    await api(`/api/device/reset/${userId}`, { method: "POST" });
+    alert("تمت إعادة تعيين الجهاز بنجاح.");
+    loadDevices();
+  } catch (err) {
+    alert("فشلت إعادة تعيين الجهاز: " + err.message);
+  }
 };
 
 // ------------ التهيئة ------------
