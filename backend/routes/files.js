@@ -2,7 +2,7 @@ const express = require("express");
 const path = require("path");
 const fs = require("fs");
 const admin = require("firebase-admin");
-const { requireAuth, requireActive } = require("../middleware/auth");
+const { requireAuth, requireActive, requireOwner } = require("../middleware/auth");
 
 const router = express.Router();
 const db = () => admin.firestore();
@@ -61,6 +61,24 @@ router.get("/by-folder/:folderId", requireAuth, requireActive, async (req, res) 
   } catch (err) {
     console.error("list files error:", err);
     return res.status(500).json({ message: "تعذر جلب الملفات." });
+  }
+});
+
+// حذف ملف - Owner فقط
+router.delete("/:fileId", requireAuth, requireActive, requireOwner, async (req, res) => {
+  try {
+    const fileSnap = await db().collection("files").doc(req.params.fileId).get();
+    if (!fileSnap.exists) return res.status(404).json({ message: "الملف غير موجود." });
+
+    const fileData = fileSnap.data();
+    const filePath = path.join(UPLOAD_DIR, fileData.storedName);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+
+    await fileSnap.ref.delete();
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("delete file error:", err);
+    return res.status(500).json({ message: "تعذر حذف الملف." });
   }
 });
 
