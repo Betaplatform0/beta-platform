@@ -57,6 +57,13 @@ function folderPathLabel(folder) {
   return parts.join(" / ");
 }
 
+function formatStorage(bytes) {
+  if (!bytes) return "0 MB";
+  const mb = bytes / 1024 / 1024;
+  if (mb < 1024) return `${mb.toFixed(1)} MB`;
+  return `${(mb / 1024).toFixed(2)} GB`;
+}
+
 // ------------ تبديل التبويبات ------------
 document.querySelectorAll(".nav-item[data-tab]").forEach((item) => {
   item.addEventListener("click", () => {
@@ -81,6 +88,7 @@ async function loadStats() {
   document.getElementById("statAdmins").textContent = s.admins;
   document.getElementById("statFolders").textContent = s.folders;
   document.getElementById("statFiles").textContent = s.files;
+  document.getElementById("statStorage").textContent = formatStorage(s.totalStorageBytes);
 }
 
 // ------------ الحسابات ------------
@@ -93,6 +101,9 @@ async function loadAccounts() {
       if (a.status === "pending") actions.push(`<button class="btn small" onclick="betaActivate('${a.id}')">تفعيل</button>`);
       if (a.status === "active" && a.role !== "owner") actions.push(`<button class="btn small danger" onclick="betaDisable('${a.id}')">تعطيل</button>`);
       if (a.status === "disabled") actions.push(`<button class="btn small" onclick="betaActivate('${a.id}')">تفعيل</button>`);
+      if (a.role !== "owner" || currentUser.role === "owner") {
+        actions.push(`<button class="btn small secondary" onclick="betaResetPassword('${a.id}')">كلمة مرور جديدة</button>`);
+      }
       if (currentUser.role === "owner" && a.role === "student") actions.push(`<button class="btn small secondary" onclick="betaMakeAdmin('${a.id}')">جعله Admin</button>`);
       if (currentUser.role === "owner" && a.role === "admin") actions.push(`<button class="btn small secondary" onclick="betaRemoveAdmin('${a.id}')">إزالة Admin</button>`);
       if (currentUser.role === "owner" && a.role !== "owner") actions.push(`<button class="btn small danger" onclick="betaDelete('${a.id}')">حذف</button>`);
@@ -120,6 +131,17 @@ window.betaDelete = async (id) => {
     loadAccounts();
   } catch (err) {
     alert("فشل حذف الحساب: " + err.message);
+  }
+};
+window.betaResetPassword = async (id) => {
+  const newPassword = prompt("اكتب كلمة المرور الجديدة (6 أحرف على الأقل)، وبلّغ بيها الطالب مباشرة:");
+  if (!newPassword) return;
+  if (newPassword.length < 6) { alert("كلمة المرور لازم تكون 6 أحرف على الأقل."); return; }
+  try {
+    await api(`/api/admin/accounts/${id}/reset-password`, { method: "POST", body: JSON.stringify({ newPassword }) });
+    alert("تم تغيير كلمة المرور بنجاح.");
+  } catch (err) {
+    alert("فشل تغيير كلمة المرور: " + err.message);
   }
 };
 
@@ -249,7 +271,7 @@ document.getElementById("addFolderBtn").addEventListener("click", async () => {
   }
 });
 
-// ------------ الملفات (مع زرار حذف) ------------
+// ------------ الملفات ------------
 async function loadFilesTab() {
   if (foldersCache.length === 0) await fetchAllFolders();
   const select = document.getElementById("uploadFolderSelect");
@@ -327,7 +349,7 @@ document.getElementById("uploadBtn").addEventListener("click", async () => {
   }
 });
 
-// ------------ الصلاحيات (مع بحث + مسار كامل للفولدرات) ------------
+// ------------ الصلاحيات ------------
 async function loadPermissionsTab() {
   if (foldersCache.length === 0) await fetchAllFolders();
   const privateFolders = foldersCache.filter((f) => f.type !== "public");
@@ -390,7 +412,7 @@ async function loadPermissionsTab() {
   };
 }
 
-// ------------ الأجهزة (مع رسائل خطأ واضحة) ------------
+// ------------ الأجهزة ------------
 async function loadDevices() {
   const { devices } = await api("/api/admin/devices");
   const tbody = document.getElementById("devicesTable");
