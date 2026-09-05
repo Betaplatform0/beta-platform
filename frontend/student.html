@@ -14,6 +14,7 @@
     <aside class="sidebar student-sidebar" id="studentSidebar">
       <span class="brand" style="text-align:center;display:block;font-size:1.8rem;margin-bottom:24px;">Beta</span>
       <div class="nav-item active" data-view="home" data-i18n="navHome">🏠 الصفحة الرئيسية</div>
+      <div class="nav-item" data-view="files" data-i18n="navFiles">📁 ملفاتي</div>
       <div class="nav-item" data-view="account" data-i18n="navAccount">👤 حسابي</div>
       <div class="nav-item" onclick="betaLogout()" data-i18n="navLogout">🚪 تسجيل الخروج</div>
     </aside>
@@ -30,8 +31,29 @@
         </div>
       </div>
 
-      <!-- الصفحة الرئيسية -->
+      <!-- الصفحة الرئيسية (ترحيبية) -->
       <div id="viewHome">
+        <div class="card" style="text-align:center;padding:40px 24px;">
+          <div style="font-size:2.4rem;font-weight:800;color:var(--primary);margin-bottom:10px;">Beta</div>
+          <h2 data-i18n="homeWelcomeTitle" style="margin:0 0 10px 0;">مرحبًا بك في Beta 👋</h2>
+          <p style="color:var(--muted);max-width:480px;margin:0 auto;" data-i18n="homeWelcomeDesc">يمكنك الوصول إلى الملفات التعليمية المسموح بها لك من خلال قسم "ملفاتي".</p>
+        </div>
+
+        <div class="card">
+          <p style="color:var(--muted);margin:0;" data-i18n="homeAbout">Beta منصة تعليمية تساعد الطلاب على الوصول إلى المحتوى والملفات التعليمية المخصصة لهم بطريقة منظمة وسهلة.</p>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size:1rem;color:var(--muted);margin-bottom:14px;" data-i18n="quickAccessTitle">الوصول السريع</h3>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <button class="btn secondary" style="width:auto;" id="quickFilesBtn" data-i18n="quickFiles">📁 ملفاتي</button>
+            <button class="btn secondary" style="width:auto;" id="quickAccountBtn" data-i18n="quickAccount">👤 حسابي</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ملفاتي (تصفح الفولدرات والملفات الفعلي) -->
+      <div id="viewFiles" style="display:none;">
         <div id="folderBreadcrumb" style="margin-bottom:14px;font-size:0.95rem;"></div>
         <div class="folder-grid" id="folderGrid" style="margin-bottom:20px;"></div>
 
