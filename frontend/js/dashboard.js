@@ -5,6 +5,7 @@ import { initTheme, initLang } from "./theme-lang.js";
 let currentUser = null;
 let foldersCache = [];
 let folderStack = [];
+let accountsCache = [];
 
 const roleLabel = { owner: "Owner", admin: "Admin", student: "Student" };
 const statusLabel = { pending: "قيد المراجعة", active: "مفعّل", disabled: "معطّل" };
@@ -91,9 +92,10 @@ async function loadStats() {
   document.getElementById("statStorage").textContent = formatStorage(s.totalStorageBytes);
 }
 
-// ------------ الحسابات ------------
+// ------------ الحسابات (مع إجراءات جماعية) ------------
 async function loadAccounts() {
   const { accounts } = await api("/api/admin/accounts");
+  accountsCache = accounts;
   const tbody = document.getElementById("accountsTable");
   tbody.innerHTML = accounts
     .map((a) => {
@@ -101,14 +103,13 @@ async function loadAccounts() {
       if (a.status === "pending") actions.push(`<button class="btn small" onclick="betaActivate('${a.id}')">تفعيل</button>`);
       if (a.status === "active" && a.role !== "owner") actions.push(`<button class="btn small danger" onclick="betaDisable('${a.id}')">تعطيل</button>`);
       if (a.status === "disabled") actions.push(`<button class="btn small" onclick="betaActivate('${a.id}')">تفعيل</button>`);
-      if (a.role !== "owner" || currentUser.role === "owner") {
-        actions.push(`<button class="btn small secondary" onclick="betaResetPassword('${a.id}')">كلمة مرور جديدة</button>`);
-      }
+      actions.push(`<button class="btn small secondary" onclick="betaResetPassword('${a.id}')">كلمة مرور جديدة</button>`);
       if (currentUser.role === "owner" && a.role === "student") actions.push(`<button class="btn small secondary" onclick="betaMakeAdmin('${a.id}')">جعله Admin</button>`);
       if (currentUser.role === "owner" && a.role === "admin") actions.push(`<button class="btn small secondary" onclick="betaRemoveAdmin('${a.id}')">إزالة Admin</button>`);
       if (currentUser.role === "owner" && a.role !== "owner") actions.push(`<button class="btn small danger" onclick="betaDelete('${a.id}')">حذف</button>`);
 
       return `<tr>
+        <td>${a.role !== "owner" ? `<input type="checkbox" class="account-check" value="${a.id}" />` : ""}</td>
         <td>${a.fullName || "-"}</td>
         <td>${a.phone || "-"}</td>
         <td>${a.seatNumber || "-"}</td>
@@ -119,6 +120,33 @@ async function loadAccounts() {
     })
     .join("");
 }
+
+document.getElementById("selectAllAccounts").addEventListener("change", (e) => {
+  document.querySelectorAll(".account-check").forEach((cb) => (cb.checked = e.target.checked));
+});
+
+document.getElementById("bulkActivateBtn").addEventListener("click", async () => {
+  const ids = [...document.querySelectorAll(".account-check:checked")].map((cb) => cb.value);
+  if (ids.length === 0) { alert("اختر حسابات أولًا."); return; }
+  try {
+    await api("/api/admin/accounts/bulk-activate", { method: "POST", body: JSON.stringify({ ids }) });
+    loadAccounts();
+  } catch (err) {
+    alert("فشل التفعيل الجماعي: " + err.message);
+  }
+});
+
+document.getElementById("bulkDisableBtn").addEventListener("click", async () => {
+  const ids = [...document.querySelectorAll(".account-check:checked")].map((cb) => cb.value);
+  if (ids.length === 0) { alert("اختر حسابات أولًا."); return; }
+  if (!confirm(`سيتم تعطيل ${ids.length} حساب. متابعة؟`)) return;
+  try {
+    await api("/api/admin/accounts/bulk-disable", { method: "POST", body: JSON.stringify({ ids }) });
+    loadAccounts();
+  } catch (err) {
+    alert("فشل التعطيل الجماعي: " + err.message);
+  }
+});
 
 window.betaActivate = async (id) => { await api(`/api/admin/accounts/${id}/activate`, { method: "POST" }); loadAccounts(); };
 window.betaDisable = async (id) => { await api(`/api/admin/accounts/${id}/disable`, { method: "POST" }); loadAccounts(); };
@@ -271,7 +299,7 @@ document.getElementById("addFolderBtn").addEventListener("click", async () => {
   }
 });
 
-// ------------ الملفات ------------
+// ------------ الملفات (رفع متعدد) ------------
 async function loadFilesTab() {
   if (foldersCache.length === 0) await fetchAllFolders();
   const select = document.getElementById("uploadFolderSelect");
@@ -322,14 +350,15 @@ document.getElementById("uploadBtn").addEventListener("click", async () => {
   const fileInput = document.getElementById("uploadFileInput");
   const msg = document.getElementById("uploadMsg");
   if (!folderId) { msg.textContent = "أنشئ فولدر أولًا من تبويب الفولدرات."; msg.className = "msg error"; return; }
-  if (!fileInput.files[0]) { msg.textContent = "اختر ملفًا أولًا."; msg.className = "msg error"; return; }
+  if (!fileInput.files.length) { msg.textContent = "اختر ملفًا واحدًا على الأقل."; msg.className = "msg error"; return; }
 
   const formData = new FormData();
-  formData.append("file", fileInput.files[0]);
+  for (const file of fileInput.files) {
+    formData.append("files", file);
+  }
   formData.append("folderId", folderId);
-  formData.append("displayName", fileInput.files[0].name);
 
-  msg.textContent = "جارٍ الرفع...";
+  msg.textContent = `جارٍ رفع ${fileInput.files.length} ملف...`;
   msg.className = "msg";
   try {
     const res = await fetch(`${BACKEND_URL}/api/upload`, {
@@ -339,7 +368,7 @@ document.getElementById("uploadBtn").addEventListener("click", async () => {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
-    msg.textContent = "تم رفع الملف بنجاح.";
+    msg.textContent = `تم رفع ${data.uploadedCount} ملف بنجاح.` + (data.failed?.length ? ` فشل: ${data.failed.join(", ")}` : "");
     msg.className = "msg success";
     fileInput.value = "";
     loadFilesForFolder(folderId);
