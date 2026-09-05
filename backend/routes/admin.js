@@ -57,16 +57,35 @@ router.post("/accounts/:id/remove-admin", requireAuth, requireActive, requireOwn
   return res.json({ ok: true });
 });
 
+// إعادة تعيين كلمة مرور طالب - Owner و Admin
+router.post("/accounts/:id/reset-password", requireAuth, requireActive, requireAdmin, async (req, res) => {
+  const { newPassword } = req.body;
+  if (!newPassword || newPassword.length < 6) {
+    return res.status(400).json({ message: "كلمة المرور يجب أن تكون 6 أحرف على الأقل." });
+  }
+  const target = await db().collection("users").doc(req.params.id).get();
+  if (!target.exists) return res.status(404).json({ message: "الحساب غير موجود." });
+  if (target.data().role === "owner" && req.betaUser.role !== "owner") {
+    return res.status(403).json({ message: "لا يمكن تغيير كلمة مرور المالك." });
+  }
+
+  try {
+    await admin.auth().updateUser(req.params.id, { password: newPassword });
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("reset-password error:", err);
+    return res.status(500).json({ message: "تعذر تغيير كلمة المرور." });
+  }
+});
+
 // ================= الفولدرات (عامة/خاصة + متداخلة) =================
 
-// كل الفولدرات (فلات، بيتحسب الشجرة والصلاحيات في الواجهة)
 router.get("/folders", requireAuth, requireActive, async (req, res) => {
   const snap = await db().collection("folders").orderBy("createdAt", "asc").get();
   const folders = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   return res.json({ folders });
 });
 
-// إنشاء فولدر (يدعم parentId اختياري لإنشاء فولدر فرعي) - Owner و Admin
 router.post("/folders", requireAuth, requireActive, requireAdmin, async (req, res) => {
   const { name, type, parentId } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ message: "اسم الفولدر مطلوب." });
@@ -88,7 +107,6 @@ router.post("/folders", requireAuth, requireActive, requireAdmin, async (req, re
   return res.json({ ok: true, id: docRef.id });
 });
 
-// تعديل اسم/نوع/فولدر أب (نقل) - Owner و Admin
 router.put("/folders/:id", requireAuth, requireActive, requireAdmin, async (req, res) => {
   const { name, type, parentId } = req.body;
   const updates = {};
@@ -103,7 +121,6 @@ router.put("/folders/:id", requireAuth, requireActive, requireAdmin, async (req,
   return res.json({ ok: true });
 });
 
-// حذف فولدر (وكل الفولدرات الفرعية والملفات بداخله بشكل متكرر) - Owner فقط
 router.delete("/folders/:id", requireAuth, requireActive, requireOwner, async (req, res) => {
   const fs = require("fs");
   const path = require("path");
@@ -127,7 +144,7 @@ router.delete("/folders/:id", requireAuth, requireActive, requireOwner, async (r
   return res.json({ ok: true });
 });
 
-// ================= صلاحيات الطلاب (لأي مستوى فولدر خاص، بشكل مستقل) =================
+// ================= صلاحيات الطلاب =================
 
 router.get("/permissions/me", requireAuth, requireActive, async (req, res) => {
   const snap = await db().collection("permissions").doc(req.betaUser.uid).get();
@@ -148,7 +165,7 @@ router.put("/permissions/:userId", requireAuth, requireActive, requireAdmin, asy
   return res.json({ ok: true });
 });
 
-// ================= إحصائيات لوحة التحكم =================
+// ================= إحصائيات لوحة التحكم (مع استهلاك التخزين) =================
 
 router.get("/stats", requireAuth, requireActive, requireAdmin, async (req, res) => {
   const usersSnap = await db().collection("users").get();
@@ -164,6 +181,11 @@ router.get("/stats", requireAuth, requireActive, requireAdmin, async (req, res) 
     if (u.status === "pending") pendingCount++;
   });
 
+  let totalStorageBytes = 0;
+  filesSnap.docs.forEach((d) => {
+    totalStorageBytes += d.data().sizeBytes || 0;
+  });
+
   return res.json({
     students,
     activeCount,
@@ -171,6 +193,7 @@ router.get("/stats", requireAuth, requireActive, requireAdmin, async (req, res) 
     admins,
     folders: foldersSnap.size,
     files: filesSnap.size,
+    totalStorageBytes,
   });
 });
 
