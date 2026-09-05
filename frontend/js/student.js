@@ -7,6 +7,7 @@ let currentUser = null;
 let foldersCache = [];
 let allowedSet = new Set();
 let folderStack = []; // {id, name}
+let dataLoaded = false;
 
 const roleLabel = { owner: "Owner", admin: "Admin", student: "Student" };
 const statusLabel = { pending: "قيد المراجعة", active: "مفعّل", disabled: "معطّل" };
@@ -31,7 +32,7 @@ function currentParentId() {
 function renderBreadcrumb() {
   const bc = document.getElementById("folderBreadcrumb");
   if (!bc) return;
-  const rootLabel = `<span class="breadcrumb-item" data-index="-1" style="cursor:pointer;color:var(--primary);">📁 الرئيسية</span>`;
+  const rootLabel = `<span class="breadcrumb-item" data-index="-1" style="cursor:pointer;color:var(--primary);">📁 ملفاتي</span>`;
   const items = folderStack.map((f, i) => `<span> / </span><span class="breadcrumb-item" data-index="${i}" style="cursor:pointer;color:var(--primary);">${f.name}</span>`);
   bc.innerHTML = rootLabel + items.join("");
   bc.querySelectorAll(".breadcrumb-item").forEach((el) => {
@@ -89,26 +90,41 @@ async function renderCurrentLevel() {
   }
 }
 
-async function loadEverything() {
+async function ensureDataLoaded() {
+  if (dataLoaded) return;
   const { folders } = await api("/api/admin/folders");
   foldersCache = folders;
 
   const { allowedFolders } = await api("/api/admin/permissions/me").catch(() => ({ allowedFolders: [] }));
   allowedSet = new Set(allowedFolders || []);
+  dataLoaded = true;
+}
 
+async function openFilesView() {
+  await ensureDataLoaded();
   renderCurrentLevel();
 }
 
-// ------------ التنقل بين "الرئيسية" و"حسابي" ------------
+// ------------ التنقل بين "الرئيسية" و"ملفاتي" و"حسابي" ------------
+function switchView(view) {
+  document.querySelectorAll(".nav-item[data-view]").forEach((i) => i.classList.remove("active"));
+  const navItem = document.querySelector(`.nav-item[data-view="${view}"]`);
+  if (navItem) navItem.classList.add("active");
+
+  document.getElementById("viewHome").style.display = view === "home" ? "block" : "none";
+  document.getElementById("viewFiles").style.display = view === "files" ? "block" : "none";
+  document.getElementById("viewAccount").style.display = view === "account" ? "block" : "none";
+
+  if (view === "files") openFilesView();
+  closeMobileMenu();
+}
+
 document.querySelectorAll(".nav-item[data-view]").forEach((item) => {
-  item.addEventListener("click", () => {
-    document.querySelectorAll(".nav-item[data-view]").forEach((i) => i.classList.remove("active"));
-    item.classList.add("active");
-    document.getElementById("viewHome").style.display = item.dataset.view === "home" ? "block" : "none";
-    document.getElementById("viewAccount").style.display = item.dataset.view === "account" ? "block" : "none";
-    closeMobileMenu();
-  });
+  item.addEventListener("click", () => switchView(item.dataset.view));
 });
+
+document.getElementById("quickFilesBtn").addEventListener("click", () => switchView("files"));
+document.getElementById("quickAccountBtn").addEventListener("click", () => switchView("account"));
 
 function renderAccount() {
   document.getElementById("accFullName").textContent = currentUser.fullName || "-";
@@ -138,5 +154,4 @@ function closeMobileMenu() {
   currentUser = await guardPage(["student"]);
   document.getElementById("welcomeText").textContent = `مرحبًا ${currentUser.fullName} 👋`;
   renderAccount();
-  loadEverything();
 })();
