@@ -2,7 +2,7 @@ const express = require("express");
 const path = require("path");
 const fs = require("fs");
 const admin = require("firebase-admin");
-const { requireAuth, requireActive, requireOwner } = require("../middleware/auth");
+const { requireAuth, requireActive, requireAdmin } = require("../middleware/auth");
 
 const router = express.Router();
 const db = () => admin.firestore();
@@ -64,8 +64,8 @@ router.get("/by-folder/:folderId", requireAuth, requireActive, async (req, res) 
   }
 });
 
-// حذف ملف - Owner فقط
-router.delete("/:fileId", requireAuth, requireActive, requireOwner, async (req, res) => {
+// حذف ملف - Owner و Admin
+router.delete("/:fileId", requireAuth, requireActive, requireAdmin, async (req, res) => {
   try {
     const fileSnap = await db().collection("files").doc(req.params.fileId).get();
     if (!fileSnap.exists) return res.status(404).json({ message: "الملف غير موجود." });
