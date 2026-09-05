@@ -5,13 +5,6 @@ const router = express.Router();
 
 const db = () => admin.firestore();
 
-/**
- * POST /api/device/verify
- * يُستدعى مباشرة بعد كل تسجيل دخول ناجح.
- * - إذا لم يكن هناك جهاز مرتبط بالحساب: يتم ربط هذا الجهاز فورًا.
- * - إذا كان هناك جهاز مرتبط ويطابق الجهاز الحالي: يُسمح بالدخول.
- * - إذا كان هناك جهاز مرتبط ولا يطابق: يُرفض الدخول تمامًا.
- */
 router.post("/verify", requireAuth, async (req, res) => {
   const { deviceId, fingerprint } = req.body;
   if (!deviceId) {
@@ -26,7 +19,6 @@ router.post("/verify", requireAuth, async (req, res) => {
       const deviceSnap = await tx.get(deviceRef);
 
       if (!deviceSnap.exists || !deviceSnap.data().deviceId) {
-        // أول ربط للجهاز
         tx.set(deviceRef, {
           deviceId,
           fingerprint: fingerprint || null,
@@ -56,13 +48,10 @@ router.post("/verify", requireAuth, async (req, res) => {
   }
 });
 
-/**
- * POST /api/device/reset/:userId
- * إعادة تعيين جهاز مستخدم معيّن - للمالك فقط (يُتحقق منه داخل server.js)
- */
+// إعادة تعيين جهاز - Owner و Admin
 router.post("/reset/:userId", requireAuth, async (req, res) => {
-  if (req.betaUser.role !== "owner") {
-    return res.status(403).json({ message: "هذا الإجراء متاح للمالك فقط." });
+  if (req.betaUser.role !== "owner" && req.betaUser.role !== "admin") {
+    return res.status(403).json({ message: "هذا الإجراء متاح للمالك والأدمن فقط." });
   }
   const targetId = req.params.userId;
   try {
