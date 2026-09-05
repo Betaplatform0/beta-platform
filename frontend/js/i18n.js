@@ -18,10 +18,18 @@ export const translations = {
     loginLink: "تسجيل الدخول",
 
     navHome: "🏠 الصفحة الرئيسية",
+    navFiles: "📁 ملفاتي",
     navAccount: "👤 حسابي",
     navLogout: "🚪 تسجيل الخروج",
     backToFolders: "⬅ رجوع للفولدرات",
     welcome: "مرحبًا",
+
+    homeWelcomeTitle: "مرحبًا بك في Beta 👋",
+    homeWelcomeDesc: "يمكنك الوصول إلى الملفات التعليمية المسموح بها لك من خلال قسم \"ملفاتي\".",
+    homeAbout: "Beta منصة تعليمية تساعد الطلاب على الوصول إلى المحتوى والملفات التعليمية المخصصة لهم بطريقة منظمة وسهلة.",
+    quickAccessTitle: "الوصول السريع",
+    quickFiles: "📁 ملفاتي",
+    quickAccount: "👤 حسابي",
 
     accFullName: "الاسم الكامل",
     accPhone: "رقم الهاتف",
@@ -80,10 +88,18 @@ export const translations = {
     loginLink: "Login",
 
     navHome: "🏠 Home",
+    navFiles: "📁 My Files",
     navAccount: "👤 My Account",
     navLogout: "🚪 Logout",
     backToFolders: "⬅ Back to folders",
     welcome: "Welcome",
+
+    homeWelcomeTitle: "Welcome to Beta 👋",
+    homeWelcomeDesc: "You can access your allowed learning files through the \"My Files\" section.",
+    homeAbout: "Beta is a learning platform that helps students access their assigned educational content and files in an organized and easy way.",
+    quickAccessTitle: "Quick Access",
+    quickFiles: "📁 My Files",
+    quickAccount: "👤 My Account",
 
     accFullName: "Full Name",
     accPhone: "Phone Number",
