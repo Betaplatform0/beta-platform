@@ -58,7 +58,7 @@ function folderPathLabel(folder) {
   return parts.join(" / ");
 }
 
-function formatStorage(bytes) {
+function formatBytes(bytes) {
   if (!bytes) return "0 MB";
   const mb = bytes / 1024 / 1024;
   if (mb < 1024) return `${mb.toFixed(1)} MB`;
@@ -80,7 +80,7 @@ document.querySelectorAll(".nav-item[data-tab]").forEach((item) => {
   });
 });
 
-// ------------ الرئيسية ------------
+// ------------ الرئيسية (مع التخزين والباندويدث) ------------
 async function loadStats() {
   const s = await api("/api/admin/stats");
   document.getElementById("statStudents").textContent = s.students;
@@ -89,7 +89,10 @@ async function loadStats() {
   document.getElementById("statAdmins").textContent = s.admins;
   document.getElementById("statFolders").textContent = s.folders;
   document.getElementById("statFiles").textContent = s.files;
-  document.getElementById("statStorage").textContent = formatStorage(s.totalStorageBytes);
+
+  const storagePercent = ((s.totalStorageBytes / s.storageLimitBytes) * 100).toFixed(1);
+  document.getElementById("statStorage").textContent = `${formatBytes(s.totalStorageBytes)} من 256 MB (${storagePercent}%)`;
+  document.getElementById("statBandwidth").textContent = `${formatBytes(s.totalBandwidthBytes)} (تراكمي)`;
 }
 
 // ------------ الحسابات (مع إجراءات جماعية) ------------
