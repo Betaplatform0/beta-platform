@@ -80,7 +80,7 @@ document.querySelectorAll(".nav-item[data-tab]").forEach((item) => {
   });
 });
 
-// ------------ الرئيسية (مع التخزين والباندويدث) ------------
+// ------------ الرئيسية ------------
 async function loadStats() {
   const s = await api("/api/admin/stats");
   document.getElementById("statStudents").textContent = s.students;
@@ -95,7 +95,7 @@ async function loadStats() {
   document.getElementById("statBandwidth").textContent = `${formatBytes(s.totalBandwidthBytes)} (تراكمي)`;
 }
 
-// ------------ الحسابات (مع إجراءات جماعية) ------------
+// ------------ الحسابات ------------
 async function loadAccounts() {
   const { accounts } = await api("/api/admin/accounts");
   accountsCache = accounts;
@@ -302,7 +302,7 @@ document.getElementById("addFolderBtn").addEventListener("click", async () => {
   }
 });
 
-// ------------ الملفات (رفع متعدد) ------------
+// ------------ الملفات (رفع متعدد + إعادة تسمية + حذف) ------------
 async function loadFilesTab() {
   if (foldersCache.length === 0) await fetchAllFolders();
   const select = document.getElementById("uploadFolderSelect");
@@ -324,13 +324,27 @@ async function loadFilesForFolder(folderId) {
         .map(
           (f) => `<div class="file-row">
             <span>📄 ${f.displayName}</span>
-            <span style="display:flex;align-items:center;gap:10px;">
+            <span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
               ${(f.sizeBytes / 1024 / 1024).toFixed(2)} MB
+              <button class="btn small secondary" data-action="rename-file" data-id="${f.id}" data-name="${f.displayName.replace(/"/g, "&quot;")}" data-folder="${folderId}">إعادة تسمية</button>
               <button class="btn small danger" data-action="delete-file" data-id="${f.id}" data-folder="${folderId}">حذف</button>
             </span>
           </div>`
         )
         .join("") || "<p style='color:var(--muted)'>لا توجد ملفات بعد.</p>";
+
+    list.querySelectorAll('button[data-action="rename-file"]').forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const newName = prompt("الاسم الجديد للملف:", btn.dataset.name);
+        if (!newName || !newName.trim()) return;
+        try {
+          await api(`/api/files/${btn.dataset.id}`, { method: "PUT", body: JSON.stringify({ displayName: newName.trim() }) });
+          loadFilesForFolder(btn.dataset.folder);
+        } catch (err) {
+          alert("فشل إعادة التسمية: " + err.message);
+        }
+      });
+    });
 
     list.querySelectorAll('button[data-action="delete-file"]').forEach((btn) => {
       btn.addEventListener("click", async () => {
