@@ -6,6 +6,8 @@ let currentUser = null;
 let foldersCache = [];
 let folderStack = [];
 let accountsCache = [];
+let accountsCursor = null;
+let accountsHasMore = false;
 
 const roleLabel = { owner: "Owner", admin: "Admin", student: "Student" };
 const statusLabel = { pending: "قيد المراجعة", active: "مفعّل", disabled: "معطّل" };
@@ -72,7 +74,7 @@ document.querySelectorAll(".nav-item[data-tab]").forEach((item) => {
     item.classList.add("active");
     document.querySelectorAll("main > section").forEach((s) => (s.style.display = "none"));
     document.getElementById(`tab-${item.dataset.tab}`).style.display = "block";
-    if (item.dataset.tab === "accounts") loadAccounts();
+    if (item.dataset.tab === "accounts") { accountsCache = []; accountsCursor = null; loadAccounts(); }
     if (item.dataset.tab === "folders") { folderStack = []; loadFolders(); }
     if (item.dataset.tab === "files") loadFilesTab();
     if (item.dataset.tab === "permissions") loadPermissionsTab();
@@ -95,12 +97,19 @@ async function loadStats() {
   document.getElementById("statBandwidth").textContent = `${formatBytes(s.totalBandwidthBytes)} (تراكمي)`;
 }
 
-// ------------ الحسابات ------------
+// ------------ الحسابات (مع ترقيم صفحات) ------------
 async function loadAccounts() {
-  const { accounts } = await api("/api/admin/accounts");
-  accountsCache = accounts;
+  const query = accountsCursor ? `?limit=50&cursor=${accountsCursor}` : "?limit=50";
+  const data = await api(`/api/admin/accounts${query}`);
+  accountsCache = accountsCache.concat(data.accounts);
+  accountsCursor = data.nextCursor;
+  accountsHasMore = data.hasMore;
+  renderAccountsTable();
+}
+
+function renderAccountsTable() {
   const tbody = document.getElementById("accountsTable");
-  tbody.innerHTML = accounts
+  tbody.innerHTML = accountsCache
     .map((a) => {
       const actions = [];
       if (a.status === "pending") actions.push(`<button class="btn small" onclick="betaActivate('${a.id}')">تفعيل</button>`);
@@ -122,7 +131,11 @@ async function loadAccounts() {
       </tr>`;
     })
     .join("");
+
+  document.getElementById("loadMoreAccountsBtn").style.display = accountsHasMore ? "inline-flex" : "none";
 }
+
+document.getElementById("loadMoreAccountsBtn").addEventListener("click", loadAccounts);
 
 document.getElementById("selectAllAccounts").addEventListener("change", (e) => {
   document.querySelectorAll(".account-check").forEach((cb) => (cb.checked = e.target.checked));
@@ -133,6 +146,7 @@ document.getElementById("bulkActivateBtn").addEventListener("click", async () =>
   if (ids.length === 0) { alert("اختر حسابات أولًا."); return; }
   try {
     await api("/api/admin/accounts/bulk-activate", { method: "POST", body: JSON.stringify({ ids }) });
+    accountsCache = []; accountsCursor = null;
     loadAccounts();
   } catch (err) {
     alert("فشل التفعيل الجماعي: " + err.message);
@@ -145,21 +159,26 @@ document.getElementById("bulkDisableBtn").addEventListener("click", async () => 
   if (!confirm(`سيتم تعطيل ${ids.length} حساب. متابعة؟`)) return;
   try {
     await api("/api/admin/accounts/bulk-disable", { method: "POST", body: JSON.stringify({ ids }) });
+    accountsCache = []; accountsCursor = null;
     loadAccounts();
   } catch (err) {
     alert("فشل التعطيل الجماعي: " + err.message);
   }
 });
 
-window.betaActivate = async (id) => { await api(`/api/admin/accounts/${id}/activate`, { method: "POST" }); loadAccounts(); };
-window.betaDisable = async (id) => { await api(`/api/admin/accounts/${id}/disable`, { method: "POST" }); loadAccounts(); };
-window.betaMakeAdmin = async (id) => { await api(`/api/admin/accounts/${id}/make-admin`, { method: "POST" }); loadAccounts(); };
-window.betaRemoveAdmin = async (id) => { await api(`/api/admin/accounts/${id}/remove-admin`, { method: "POST" }); loadAccounts(); };
+function refreshAccountsTab() {
+  accountsCache = []; accountsCursor = null; loadAccounts();
+}
+
+window.betaActivate = async (id) => { await api(`/api/admin/accounts/${id}/activate`, { method: "POST" }); refreshAccountsTab(); };
+window.betaDisable = async (id) => { await api(`/api/admin/accounts/${id}/disable`, { method: "POST" }); refreshAccountsTab(); };
+window.betaMakeAdmin = async (id) => { await api(`/api/admin/accounts/${id}/make-admin`, { method: "POST" }); refreshAccountsTab(); };
+window.betaRemoveAdmin = async (id) => { await api(`/api/admin/accounts/${id}/remove-admin`, { method: "POST" }); refreshAccountsTab(); };
 window.betaDelete = async (id) => {
   if (!confirm("هل أنت متأكد من حذف هذا الحساب نهائيًا؟")) return;
   try {
     await api(`/api/admin/accounts/${id}`, { method: "DELETE" });
-    loadAccounts();
+    refreshAccountsTab();
   } catch (err) {
     alert("فشل حذف الحساب: " + err.message);
   }
@@ -395,12 +414,12 @@ document.getElementById("uploadBtn").addEventListener("click", async () => {
   }
 });
 
-// ------------ الصلاحيات ------------
+// ------------ الصلاحيات (تستخدم مسار الطلاب المخصص) ------------
 async function loadPermissionsTab() {
   if (foldersCache.length === 0) await fetchAllFolders();
   const privateFolders = foldersCache.filter((f) => f.type !== "public");
-  const { accounts } = await api("/api/admin/accounts");
-  const students = accounts.filter((a) => a.role === "student");
+  const { accounts } = await api("/api/admin/accounts/students");
+  const students = accounts;
 
   const select = document.getElementById("permStudentSelect");
   const searchInput = document.getElementById("permStudentSearch");
