@@ -34,6 +34,10 @@
           <label data-i18n="confirmPasswordLabel">تأكيد كلمة المرور</label>
           <input type="password" id="confirmPassword" minlength="6" placeholder="••••••••" required />
         </div>
+        <div class="field">
+          <label id="captchaLabel">تحقق أمني: جارٍ التحميل...</label>
+          <input type="number" id="captchaAnswer" placeholder="اكتب الناتج" required />
+        </div>
         <button type="submit" class="btn" id="signupBtn" data-i18n="signupBtn">تسجيل الحساب</button>
         <div class="msg" id="msg"></div>
       </form>
@@ -55,6 +59,22 @@
     initTheme();
     initLang();
 
+    let captchaToken = null;
+
+    async function loadCaptcha() {
+      const label = document.getElementById("captchaLabel");
+      label.textContent = "تحقق أمني: جارٍ التحميل...";
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/auth/captcha`);
+        const data = await res.json();
+        captchaToken = data.token;
+        label.textContent = `تحقق أمني: كم ناتج ${data.question} ؟`;
+      } catch (err) {
+        label.textContent = "تعذر تحميل التحقق الأمني، حدّث الصفحة.";
+      }
+    }
+    loadCaptcha();
+
     const form = document.getElementById("signupForm");
     const msg = document.getElementById("msg");
     const btn = document.getElementById("signupBtn");
@@ -73,9 +93,16 @@
       const seatNumber = document.getElementById("seatNumber").value.trim();
       const password = document.getElementById("password").value;
       const confirmPassword = document.getElementById("confirmPassword").value;
+      const captchaAnswer = document.getElementById("captchaAnswer").value;
 
       if (password !== confirmPassword) {
         showMsg("كلمتا المرور غير متطابقتين.", "error");
+        btn.disabled = false;
+        return;
+      }
+
+      if (!captchaToken || !captchaAnswer) {
+        showMsg("أكمل التحقق الأمني أولًا.", "error");
         btn.disabled = false;
         return;
       }
@@ -93,11 +120,12 @@
             "Content-Type": "application/json",
             Authorization: `Bearer ${idToken}`,
           },
-          body: JSON.stringify({ fullName, phone, seatNumber }),
+          body: JSON.stringify({ fullName, phone, seatNumber, captchaToken, captchaAnswer }),
         });
 
         if (!res.ok) {
           const err = await res.json();
+          await user.delete().catch(() => {});
           throw new Error(err.message || "تعذر إنشاء الملف الشخصي");
         }
 
@@ -116,6 +144,7 @@
         console.error(err);
         showMsg(err.message || "حدث خطأ أثناء إنشاء الحساب.", "error");
         btn.disabled = false;
+        loadCaptcha();
       }
     });
   </script>
