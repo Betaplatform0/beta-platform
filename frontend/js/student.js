@@ -115,7 +115,12 @@ function switchView(view) {
   document.getElementById("viewFiles").style.display = view === "files" ? "block" : "none";
   document.getElementById("viewAccount").style.display = view === "account" ? "block" : "none";
 
-  if (view === "files") openFilesView();
+  if (view === "files") {
+    if (!dataLoaded) {
+      document.getElementById("folderGrid").innerHTML = "<p style='color:var(--muted)'>جارٍ التحميل...</p>";
+    }
+    openFilesView();
+  }
   closeMobileMenu();
 }
 
