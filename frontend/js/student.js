@@ -6,7 +6,7 @@ import { initTheme, initLang } from "./theme-lang.js";
 let currentUser = null;
 let foldersCache = [];
 let allowedSet = new Set();
-let folderStack = []; // {id, name}
+let folderStack = [];
 let dataLoaded = false;
 
 const roleLabel = { owner: "Owner", admin: "Admin", student: "Student" };
@@ -92,21 +92,43 @@ async function renderCurrentLevel() {
 
 async function ensureDataLoaded() {
   if (dataLoaded) return;
-  const { folders } = await api("/api/admin/folders");
-  foldersCache = folders;
 
-  const { allowedFolders } = await api("/api/admin/permissions/me").catch(() => ({ allowedFolders: [] }));
-  allowedSet = new Set(allowedFolders || []);
-  dataLoaded = true;
+  const grid = document.getElementById("folderGrid");
+  grid.innerHTML = "<p style='color:var(--muted)'>جارٍ التحميل...</p>";
+
+  try {
+    const { folders } = await api("/api/admin/folders");
+    foldersCache = folders;
+
+    const { allowedFolders } = await api("/api/admin/permissions/me").catch(() => ({ allowedFolders: [] }));
+    allowedSet = new Set(allowedFolders || []);
+
+    dataLoaded = true;
+  } catch (err) {
+    console.error("ensureDataLoaded error:", err);
+    grid.innerHTML = `
+      <p style="color:var(--danger)">تعذر تحميل الفولدرات. تأكد من اتصالك بالإنترنت وحاول تاني.</p>
+      <button class="btn secondary" style="width:auto;" id="retryLoadBtn">إعادة المحاولة</button>
+    `;
+    document.getElementById("retryLoadBtn").addEventListener("click", async () => {
+      await ensureDataLoaded();
+      if (dataLoaded) renderCurrentLevel();
+    });
+    throw err;
+  }
 }
 
 async function openFilesView() {
-  await ensureDataLoaded();
-  renderCurrentLevel();
+  try {
+    await ensureDataLoaded();
+    renderCurrentLevel();
+  } catch (err) {
+    // رسالة إعادة المحاولة ظهرت بالفعل جوه ensureDataLoaded
+  }
 }
 
-// ------------ التنقل بين "الرئيسية" و"ملفاتي" و"حسابي" ------------
-function switchView(view) {
+// ------------ التنقل بين "الرئيسية" و"ملفاتي" و"حسابي" (مع دعم زر الرجوع) ------------
+function applyView(view) {
   document.querySelectorAll(".nav-item[data-view]").forEach((i) => i.classList.remove("active"));
   const navItem = document.querySelector(`.nav-item[data-view="${view}"]`);
   if (navItem) navItem.classList.add("active");
@@ -115,14 +137,19 @@ function switchView(view) {
   document.getElementById("viewFiles").style.display = view === "files" ? "block" : "none";
   document.getElementById("viewAccount").style.display = view === "account" ? "block" : "none";
 
-  if (view === "files") {
-    if (!dataLoaded) {
-      document.getElementById("folderGrid").innerHTML = "<p style='color:var(--muted)'>جارٍ التحميل...</p>";
-    }
-    openFilesView();
-  }
+  if (view === "files") openFilesView();
   closeMobileMenu();
 }
+
+function switchView(view) {
+  applyView(view);
+  history.pushState({ betaView: view }, "", "#" + view);
+}
+
+window.addEventListener("popstate", (event) => {
+  const view = (event.state && event.state.betaView) || "home";
+  applyView(view);
+});
 
 document.querySelectorAll(".nav-item[data-view]").forEach((item) => {
   item.addEventListener("click", () => switchView(item.dataset.view));
@@ -159,4 +186,5 @@ function closeMobileMenu() {
   currentUser = await guardPage(["student"]);
   document.getElementById("welcomeText").textContent = `مرحبًا ${currentUser.fullName} 👋`;
   renderAccount();
+  history.replaceState({ betaView: "home" }, "", "#home");
 })();
