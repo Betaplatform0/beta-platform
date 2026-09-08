@@ -79,6 +79,7 @@ document.querySelectorAll(".nav-item[data-tab]").forEach((item) => {
     if (item.dataset.tab === "files") loadFilesTab();
     if (item.dataset.tab === "permissions") loadPermissionsTab();
     if (item.dataset.tab === "devices") loadDevices();
+    if (item.dataset.tab === "notifications") loadNotificationsTab();
   });
 });
 
@@ -510,6 +511,70 @@ window.betaResetDevice = async (userId) => {
     alert("فشلت إعادة تعيين الجهاز: " + err.message);
   }
 };
+
+// ------------ إرسال الإشعارات ------------
+let notifStudentsCache = [];
+
+async function loadNotificationsTab() {
+  const typeSelect = document.getElementById("notifTargetType");
+  const studentField = document.getElementById("notifStudentField");
+
+  typeSelect.onchange = () => {
+    studentField.style.display = typeSelect.value === "specific" ? "block" : "none";
+  };
+
+  if (notifStudentsCache.length === 0) {
+    const { accounts } = await api("/api/admin/accounts/students");
+    notifStudentsCache = accounts;
+  }
+
+  const select = document.getElementById("notifStudentSelect");
+  const searchInput = document.getElementById("notifStudentSearch");
+
+  function renderOptions(list) {
+    select.innerHTML = list.map((s) => `<option value="${s.id}">${s.fullName} (${s.phone})</option>`).join("");
+  }
+  renderOptions(notifStudentsCache);
+
+  searchInput.oninput = () => {
+    const q = searchInput.value.trim().toLowerCase();
+    renderOptions(
+      notifStudentsCache.filter(
+        (s) => (s.fullName || "").toLowerCase().includes(q) || (s.phone || "").includes(q) || (s.seatNumber || "").toLowerCase().includes(q)
+      )
+    );
+  };
+}
+
+document.getElementById("sendNotifBtn").addEventListener("click", async () => {
+  const title = document.getElementById("notifTitle").value.trim();
+  const message = document.getElementById("notifMessage").value.trim();
+  const targetType = document.getElementById("notifTargetType").value;
+  const targetId = targetType === "specific" ? document.getElementById("notifStudentSelect").value : null;
+  const msg = document.getElementById("notifMsg");
+
+  if (!title || !message) {
+    msg.textContent = "العنوان والنص مطلوبان.";
+    msg.className = "msg error";
+    return;
+  }
+  if (targetType === "specific" && !targetId) {
+    msg.textContent = "اختر طالبًا أولًا.";
+    msg.className = "msg error";
+    return;
+  }
+
+  try {
+    await api("/api/notifications", { method: "POST", body: JSON.stringify({ title, message, targetType, targetId }) });
+    msg.textContent = "تم إرسال الإشعار بنجاح.";
+    msg.className = "msg success";
+    document.getElementById("notifTitle").value = "";
+    document.getElementById("notifMessage").value = "";
+  } catch (err) {
+    msg.textContent = "فشل إرسال الإشعار: " + err.message;
+    msg.className = "msg error";
+  }
+});
 
 // ------------ التهيئة ------------
 (async function init() {
