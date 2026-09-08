@@ -127,7 +127,32 @@ async function openFilesView() {
   }
 }
 
-// ------------ التنقل بين "الرئيسية" و"ملفاتي" و"حسابي" (مع دعم زر الرجوع) ------------
+// ------------ الإشعارات ------------
+async function openNotificationsView() {
+  const list = document.getElementById("notificationsList");
+  list.innerHTML = "جارٍ التحميل...";
+  try {
+    const { notifications } = await api("/api/notifications/me");
+    if (!notifications || notifications.length === 0) {
+      list.innerHTML = "<p style='color:var(--muted)'>لا توجد إشعارات حاليًا.</p>";
+      return;
+    }
+    list.innerHTML = notifications
+      .map((n) => {
+        const time = n.createdAt && n.createdAt._seconds ? new Date(n.createdAt._seconds * 1000).toLocaleString("ar-EG") : "";
+        return `<div class="card" style="margin-bottom:10px;">
+          <div style="font-weight:700;margin-bottom:6px;">🔔 ${n.title}</div>
+          <div style="color:var(--muted);font-size:0.9rem;margin-bottom:8px;">${n.message}</div>
+          <div style="color:var(--muted);font-size:0.75rem;">${n.createdByName || ""} ${time ? "· " + time : ""}</div>
+        </div>`;
+      })
+      .join("");
+  } catch (err) {
+    list.innerHTML = `<p style='color:var(--danger)'>تعذر تحميل الإشعارات: ${err.message}</p>`;
+  }
+}
+
+// ------------ التنقل بين الصفحات (مع دعم زر الرجوع) ------------
 function applyView(view) {
   document.querySelectorAll(".nav-item[data-view]").forEach((i) => i.classList.remove("active"));
   const navItem = document.querySelector(`.nav-item[data-view="${view}"]`);
@@ -136,8 +161,10 @@ function applyView(view) {
   document.getElementById("viewHome").style.display = view === "home" ? "block" : "none";
   document.getElementById("viewFiles").style.display = view === "files" ? "block" : "none";
   document.getElementById("viewAccount").style.display = view === "account" ? "block" : "none";
+  document.getElementById("viewNotifications").style.display = view === "notifications" ? "block" : "none";
 
   if (view === "files") openFilesView();
+  if (view === "notifications") openNotificationsView();
   closeMobileMenu();
 }
 
@@ -154,9 +181,6 @@ window.addEventListener("popstate", (event) => {
 document.querySelectorAll(".nav-item[data-view]").forEach((item) => {
   item.addEventListener("click", () => switchView(item.dataset.view));
 });
-
-document.getElementById("quickFilesBtn").addEventListener("click", () => switchView("files"));
-document.getElementById("quickAccountBtn").addEventListener("click", () => switchView("account"));
 
 function renderAccount() {
   document.getElementById("accFullName").textContent = currentUser.fullName || "-";
