@@ -20,34 +20,6 @@
       <div class="nav-item" onclick="betaLogout()" data-i18n="dashLogout">🚪 تسجيل الخروج</div>
     </aside>
 
-    <!-- إرسال إشعار -->
-      <section id="tab-notifications" style="display:none;">
-        <div class="card">
-          <div class="field">
-            <label>العنوان</label>
-            <input type="text" id="notifTitle" placeholder="مثال: تحديث جديد" style="width:100%;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface-2);color:var(--text);" />
-          </div>
-          <div class="field">
-            <label>النص</label>
-            <textarea id="notifMessage" rows="4" placeholder="اكتب نص الإشعار هنا..." style="width:100%;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface-2);color:var(--text);"></textarea>
-          </div>
-          <div class="field">
-            <label>الوجهة</label>
-            <select id="notifTargetType" style="padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface-2);color:var(--text);width:100%;">
-              <option value="all">🌐 كل الطلاب</option>
-              <option value="specific">👤 طالب معين</option>
-            </select>
-          </div>
-          <div class="field" id="notifStudentField" style="display:none;">
-            <label>اختر الطالب</label>
-            <input type="text" id="notifStudentSearch" placeholder="ابحث بالاسم أو الهاتف..." style="width:100%;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface-2);color:var(--text);margin-bottom:8px;" />
-            <select id="notifStudentSelect" style="padding:10px;border-radius:8px;border:1.5px solid var(--border);width:100%;background:var(--surface-2);color:var(--text);"></select>
-          </div>
-          <button class="btn" style="width:auto;margin-top:10px;" id="sendNotifBtn">إرسال الإشعار</button>
-          <div id="notifMsg" class="msg"></div>
-        </div>
-        </section>
-    
     <main class="main">
       <div class="topbar">
         <h2 id="welcomeText">مرحبًا 👋</h2>
@@ -154,6 +126,34 @@
             </thead>
             <tbody id="devicesTable"></tbody>
           </table>
+        </div>
+      </section>
+
+      <!-- إرسال إشعار -->
+      <section id="tab-notifications" style="display:none;">
+        <div class="card">
+          <div class="field">
+            <label>العنوان</label>
+            <input type="text" id="notifTitle" placeholder="مثال: تحديث جديد" style="width:100%;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface-2);color:var(--text);" />
+          </div>
+          <div class="field">
+            <label>النص</label>
+            <textarea id="notifMessage" rows="4" placeholder="اكتب نص الإشعار هنا..." style="width:100%;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface-2);color:var(--text);"></textarea>
+          </div>
+          <div class="field">
+            <label>الوجهة</label>
+            <select id="notifTargetType" style="padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface-2);color:var(--text);width:100%;">
+              <option value="all">🌐 كل الطلاب</option>
+              <option value="specific">👤 طالب معين</option>
+            </select>
+          </div>
+          <div class="field" id="notifStudentField" style="display:none;">
+            <label>اختر الطالب</label>
+            <input type="text" id="notifStudentSearch" placeholder="ابحث بالاسم أو الهاتف..." style="width:100%;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface-2);color:var(--text);margin-bottom:8px;" />
+            <select id="notifStudentSelect" style="padding:10px;border-radius:8px;border:1.5px solid var(--border);width:100%;background:var(--surface-2);color:var(--text);"></select>
+          </div>
+          <button class="btn" style="width:auto;margin-top:10px;" id="sendNotifBtn">إرسال الإشعار</button>
+          <div id="notifMsg" class="msg"></div>
         </div>
       </section>
     </main>
