@@ -8,6 +8,7 @@ let folderStack = [];
 let accountsCache = [];
 let accountsCursor = null;
 let accountsHasMore = false;
+let notifStudentsCache = [];
 
 const roleLabel = { owner: "Owner", admin: "Admin", student: "Student" };
 const statusLabel = { pending: "قيد المراجعة", active: "مفعّل", disabled: "معطّل" };
@@ -415,7 +416,7 @@ document.getElementById("uploadBtn").addEventListener("click", async () => {
   }
 });
 
-// ------------ الصلاحيات (تستخدم مسار الطلاب المخصص) ------------
+// ------------ الصلاحيات ------------
 async function loadPermissionsTab() {
   if (foldersCache.length === 0) await fetchAllFolders();
   const privateFolders = foldersCache.filter((f) => f.type !== "public");
@@ -513,8 +514,6 @@ window.betaResetDevice = async (userId) => {
 };
 
 // ------------ إرسال الإشعارات ------------
-let notifStudentsCache = [];
-
 async function loadNotificationsTab() {
   const typeSelect = document.getElementById("notifTargetType");
   const studentField = document.getElementById("notifStudentField");
