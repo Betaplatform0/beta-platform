@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Beta | الطالب</title>
 <link rel="stylesheet" href="css/style.css" />
-  <link rel="icon" type="image/png" href="icons/favicon-32.png" />
+<link rel="icon" type="image/png" href="icons/favicon-32.png" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#17b489" />
@@ -21,6 +21,7 @@
       <div class="nav-item active" data-view="home" data-i18n="navHome">🏠 الصفحة الرئيسية</div>
       <div class="nav-item" data-view="files" data-i18n="navFiles">📁 ملفاتي</div>
       <div class="nav-item" data-view="account" data-i18n="navAccount">👤 حسابي</div>
+      <div class="nav-item" data-view="notifications">🔔 الإشعارات</div>
       <div class="nav-item" onclick="betaLogout()" data-i18n="navLogout">🚪 تسجيل الخروج</div>
     </aside>
 
@@ -36,7 +37,7 @@
         </div>
       </div>
 
-      <!-- الصفحة الرئيسية (ترحيبية) -->
+      <!-- الصفحة الرئيسية (ترحيبية فقط) -->
       <div id="viewHome">
         <div class="card" style="text-align:center;padding:40px 24px;">
           <div style="font-size:2.4rem;font-weight:800;color:var(--primary);margin-bottom:10px;">Beta</div>
@@ -47,17 +48,9 @@
         <div class="card">
           <p style="color:var(--muted);margin:0;" data-i18n="homeAbout">Beta منصة تعليمية تساعد الطلاب على الوصول إلى المحتوى والملفات التعليمية المخصصة لهم بطريقة منظمة وسهلة.</p>
         </div>
-
-        <div class="card">
-          <h3 style="font-size:1rem;color:var(--muted);margin-bottom:14px;" data-i18n="quickAccessTitle">الوصول السريع</h3>
-          <div style="display:flex;gap:12px;flex-wrap:wrap;">
-            <button class="btn secondary" style="width:auto;" id="quickFilesBtn" data-i18n="quickFiles">📁 ملفاتي</button>
-            <button class="btn secondary" style="width:auto;" id="quickAccountBtn" data-i18n="quickAccount">👤 حسابي</button>
-          </div>
-        </div>
       </div>
 
-      <!-- ملفاتي (تصفح الفولدرات والملفات الفعلي) -->
+      <!-- ملفاتي -->
       <div id="viewFiles" style="display:none;">
         <div id="folderBreadcrumb" style="margin-bottom:14px;font-size:0.95rem;"></div>
         <div class="folder-grid" id="folderGrid" style="margin-bottom:20px;"></div>
@@ -81,6 +74,11 @@
             </tbody>
           </table>
         </div>
+      </div>
+
+      <!-- الإشعارات -->
+      <div id="viewNotifications" style="display:none;">
+        <div class="file-list" id="notificationsList"></div>
       </div>
     </main>
   </div>
