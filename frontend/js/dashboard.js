@@ -543,6 +543,47 @@ async function loadNotificationsTab() {
       )
     );
   };
+
+  loadSentNotifications();
+}
+
+async function loadSentNotifications() {
+  const container = document.getElementById("sentNotificationsList");
+  container.innerHTML = "جارٍ التحميل...";
+  try {
+    const { notifications } = await api("/api/notifications");
+    if (!notifications || notifications.length === 0) {
+      container.innerHTML = "<p style='color:var(--muted)'>لا توجد إشعارات مرسلة بعد.</p>";
+      return;
+    }
+    container.innerHTML = notifications
+      .map((n) => {
+        const time = n.createdAt && n.createdAt._seconds ? new Date(n.createdAt._seconds * 1000).toLocaleString("ar-EG") : "";
+        const targetLabel = n.targetType === "all" ? "🌐 كل الطلاب" : "👤 طالب معين";
+        return `<div class="file-row" data-id="${n.id}">
+          <span style="flex:1;">
+            <div style="font-weight:700;">${n.title}</div>
+            <div style="font-size:0.8rem;color:var(--muted);">${targetLabel} · ${time}</div>
+          </span>
+          <button class="btn small danger" data-action="delete-notif" data-id="${n.id}">حذف</button>
+        </div>`;
+      })
+      .join("");
+
+    container.querySelectorAll('button[data-action="delete-notif"]').forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("هل تريد حذف هذا الإشعار؟")) return;
+        try {
+          await api(`/api/notifications/${btn.dataset.id}`, { method: "DELETE" });
+          loadSentNotifications();
+        } catch (err) {
+          alert("فشل حذف الإشعار: " + err.message);
+        }
+      });
+    });
+  } catch (err) {
+    container.innerHTML = `<p style='color:var(--danger)'>تعذر تحميل الإشعارات: ${err.message}</p>`;
+  }
 }
 
 document.getElementById("sendNotifBtn").addEventListener("click", async () => {
@@ -569,6 +610,7 @@ document.getElementById("sendNotifBtn").addEventListener("click", async () => {
     msg.className = "msg success";
     document.getElementById("notifTitle").value = "";
     document.getElementById("notifMessage").value = "";
+    loadSentNotifications();
   } catch (err) {
     msg.textContent = "فشل إرسال الإشعار: " + err.message;
     msg.className = "msg error";
