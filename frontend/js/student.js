@@ -8,6 +8,7 @@ let foldersCache = [];
 let allowedSet = new Set();
 let folderStack = [];
 let dataLoaded = false;
+let currentView = "home";
 
 const roleLabel = { owner: "Owner", admin: "Admin", student: "Student" };
 const statusLabel = { pending: "قيد المراجعة", active: "مفعّل", disabled: "معطّل" };
@@ -127,7 +128,7 @@ async function openFilesView() {
   }
 }
 
-// ------------ الإشعارات ------------
+// ------------ الإشعارات (بدون اسم المرسل) ------------
 async function openNotificationsView() {
   const list = document.getElementById("notificationsList");
   list.innerHTML = "جارٍ التحميل...";
@@ -143,7 +144,7 @@ async function openNotificationsView() {
         return `<div class="card" style="margin-bottom:10px;">
           <div style="font-weight:700;margin-bottom:6px;">🔔 ${n.title}</div>
           <div style="color:var(--muted);font-size:0.9rem;margin-bottom:8px;">${n.message}</div>
-          <div style="color:var(--muted);font-size:0.75rem;">${n.createdByName || ""} ${time ? "· " + time : ""}</div>
+          <div style="color:var(--muted);font-size:0.75rem;">${time}</div>
         </div>`;
       })
       .join("");
@@ -152,7 +153,7 @@ async function openNotificationsView() {
   }
 }
 
-// ------------ التنقل بين الصفحات (مع دعم زر الرجوع) ------------
+// ------------ التنقل بين الصفحات + مسك زر الرجوع بالكامل ------------
 function applyView(view) {
   document.querySelectorAll(".nav-item[data-view]").forEach((i) => i.classList.remove("active"));
   const navItem = document.querySelector(`.nav-item[data-view="${view}"]`);
@@ -166,6 +167,7 @@ function applyView(view) {
   if (view === "files") openFilesView();
   if (view === "notifications") openNotificationsView();
   closeMobileMenu();
+  currentView = view;
 }
 
 function switchView(view) {
@@ -173,13 +175,20 @@ function switchView(view) {
   history.pushState({ betaView: view }, "", "#" + view);
 }
 
-window.addEventListener("popstate", (event) => {
-  const view = (event.state && event.state.betaView) || "home";
-  applyView(view);
-});
-
 document.querySelectorAll(".nav-item[data-view]").forEach((item) => {
   item.addEventListener("click", () => switchView(item.dataset.view));
+});
+
+// كل ضغطة على زر الرجوع بتتحول لتصرف داخل التطبيق، وبعدها بنـ"يفخخ" زر الرجوع
+// تاني بحالة جديدة، عشان الضغط عليه أي عدد مرات محتفضلش يوصل أبدًا لصفحة الدخول
+window.addEventListener("popstate", () => {
+  if (currentView !== "home") {
+    applyView("home");
+  } else {
+    // بالفعل في الرئيسية - أعد عرضها (محاكاة Refresh) من غير مغادرة التطبيق
+    applyView("home");
+  }
+  history.pushState({ betaView: "home" }, "", "#home");
 });
 
 function renderAccount() {
