@@ -1,30 +1,16 @@
 import { guardPage } from "./auth-guard.js";
-import { BACKEND_URL } from "./firebase-config.js";
+import { api, escapeHtml } from "./api-client.js";
 import { openPdfViewer } from "./pdf-viewer.js";
 import { initTheme, initLang } from "./theme-lang.js";
 
 let currentUser = null;
 let foldersCache = [];
-let allowedSet = new Set();
 let folderStack = [];
 let dataLoaded = false;
 let currentView = "home";
 
 const roleLabel = { owner: "Owner", admin: "Admin", student: "Student" };
 const statusLabel = { pending: "قيد المراجعة", active: "مفعّل", disabled: "معطّل" };
-
-async function api(pathname) {
-  const res = await fetch(`${BACKEND_URL}${pathname}`, {
-    headers: { Authorization: `Bearer ${currentUser.idToken}` },
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "حدث خطأ");
-  return data;
-}
-
-function canSee(folder) {
-  return folder.type === "public" || allowedSet.has(folder.id);
-}
 
 function currentParentId() {
   return folderStack.length ? folderStack[folderStack.length - 1].id : null;
@@ -34,7 +20,7 @@ function renderBreadcrumb() {
   const bc = document.getElementById("folderBreadcrumb");
   if (!bc) return;
   const rootLabel = `<span class="breadcrumb-item" data-index="-1" style="cursor:pointer;color:var(--primary);">📁 ملفاتي</span>`;
-  const items = folderStack.map((f, i) => `<span> / </span><span class="breadcrumb-item" data-index="${i}" style="cursor:pointer;color:var(--primary);">${f.name}</span>`);
+  const items = folderStack.map((f, i) => `<span> / </span><span class="breadcrumb-item" data-index="${i}" style="cursor:pointer;color:var(--primary);">${escapeHtml(f.name)}</span>`);
   bc.innerHTML = rootLabel + items.join("");
   bc.querySelectorAll(".breadcrumb-item").forEach((el) => {
     el.addEventListener("click", () => {
@@ -49,11 +35,12 @@ async function renderCurrentLevel() {
   renderBreadcrumb();
   const parentId = currentParentId();
 
-  const visibleFolders = foldersCache.filter((f) => (f.parentId || null) === parentId && canSee(f));
+  // الفولدرات كلها جاية من endpoint خاص بالطالب بيرجع بس المسموح بيها أصلًا
+  const visibleFolders = foldersCache.filter((f) => (f.parentId || null) === parentId);
   const grid = document.getElementById("folderGrid");
   grid.innerHTML =
     visibleFolders
-      .map((f) => `<div class="folder-card" data-id="${f.id}" data-name="${f.name}"><div class="icon">📁</div><div>${f.name}</div></div>`)
+      .map((f) => `<div class="folder-card" data-id="${f.id}" data-name="${escapeHtml(f.name)}"><div class="icon">📁</div><div>${escapeHtml(f.name)}</div></div>`)
       .join("") || "";
 
   grid.querySelectorAll(".folder-card").forEach((card) => {
@@ -72,7 +59,7 @@ async function renderCurrentLevel() {
       const { files } = await api(`/api/files/by-folder/${parentId}`);
       filesList.innerHTML =
         files
-          .map((f) => `<div class="file-row" data-id="${f.id}"><span>📄 ${f.displayName}</span><span>عرض</span></div>`)
+          .map((f) => `<div class="file-row" data-id="${f.id}"><span>📄 ${escapeHtml(f.displayName)}</span><span>عرض</span></div>`)
           .join("") || "<p style='color:var(--muted)'>لا توجد ملفات في هذا الفولدر.</p>";
 
       filesList.querySelectorAll(".file-row").forEach((row) => {
@@ -98,15 +85,11 @@ async function ensureDataLoaded() {
   grid.innerHTML = "<p style='color:var(--muted)'>جارٍ التحميل...</p>";
 
   try {
-    const { folders } = await api("/api/admin/folders");
+    const { folders } = await api("/api/student/folders");
     foldersCache = folders;
-
-    const { allowedFolders } = await api("/api/admin/permissions/me").catch(() => ({ allowedFolders: [] }));
-    allowedSet = new Set(allowedFolders || []);
-
     dataLoaded = true;
   } catch (err) {
-    console.error("ensureDataLoaded error:", err);
+    console.error("تعذر تحميل البيانات");
     grid.innerHTML = `
       <p style="color:var(--danger)">تعذر تحميل الفولدرات. تأكد من اتصالك بالإنترنت وحاول تاني.</p>
       <button class="btn secondary" style="width:auto;" id="retryLoadBtn">إعادة المحاولة</button>
@@ -124,11 +107,10 @@ async function openFilesView() {
     await ensureDataLoaded();
     renderCurrentLevel();
   } catch (err) {
-    // رسالة إعادة المحاولة ظهرت بالفعل جوه ensureDataLoaded
+    // الرسالة ظهرت بالفعل جوه ensureDataLoaded
   }
 }
 
-// ------------ الإشعارات (بدون اسم المرسل) ------------
 async function openNotificationsView() {
   const list = document.getElementById("notificationsList");
   list.innerHTML = "جارٍ التحميل...";
@@ -142,18 +124,17 @@ async function openNotificationsView() {
       .map((n) => {
         const time = n.createdAt && n.createdAt._seconds ? new Date(n.createdAt._seconds * 1000).toLocaleString("ar-EG") : "";
         return `<div class="card" style="margin-bottom:10px;">
-          <div style="font-weight:700;margin-bottom:6px;">🔔 ${n.title}</div>
-          <div style="color:var(--muted);font-size:0.9rem;margin-bottom:8px;">${n.message}</div>
+          <div style="font-weight:700;margin-bottom:6px;">🔔 ${escapeHtml(n.title)}</div>
+          <div style="color:var(--muted);font-size:0.9rem;margin-bottom:8px;">${escapeHtml(n.message)}</div>
           <div style="color:var(--muted);font-size:0.75rem;">${time}</div>
         </div>`;
       })
       .join("");
   } catch (err) {
-    list.innerHTML = `<p style='color:var(--danger)'>تعذر تحميل الإشعارات: ${err.message}</p>`;
+    list.innerHTML = `<p style='color:var(--danger)'>تعذر تحميل الإشعارات.</p>`;
   }
 }
 
-// ------------ التنقل بين الصفحات + مسك زر الرجوع بالكامل ------------
 function applyView(view) {
   document.querySelectorAll(".nav-item[data-view]").forEach((i) => i.classList.remove("active"));
   const navItem = document.querySelector(`.nav-item[data-view="${view}"]`);
@@ -179,15 +160,8 @@ document.querySelectorAll(".nav-item[data-view]").forEach((item) => {
   item.addEventListener("click", () => switchView(item.dataset.view));
 });
 
-// كل ضغطة على زر الرجوع بتتحول لتصرف داخل التطبيق، وبعدها بنـ"يفخخ" زر الرجوع
-// تاني بحالة جديدة، عشان الضغط عليه أي عدد مرات محتفضلش يوصل أبدًا لصفحة الدخول
 window.addEventListener("popstate", () => {
-  if (currentView !== "home") {
-    applyView("home");
-  } else {
-    // بالفعل في الرئيسية - أعد عرضها (محاكاة Refresh) من غير مغادرة التطبيق
-    applyView("home");
-  }
+  applyView("home");
   history.pushState({ betaView: "home" }, "", "#home");
 });
 
@@ -199,7 +173,6 @@ function renderAccount() {
   document.getElementById("accStatus").textContent = statusLabel[currentUser.status] || currentUser.status;
 }
 
-// ------------ القائمة الجانبية على الهاتف ------------
 const sidebar = document.getElementById("studentSidebar");
 const backdrop = document.getElementById("sidebarBackdrop");
 document.getElementById("menuBtn").addEventListener("click", () => {
@@ -212,7 +185,6 @@ function closeMobileMenu() {
   backdrop.classList.remove("open");
 }
 
-// ------------ التهيئة ------------
 (async function init() {
   initTheme();
   initLang();
