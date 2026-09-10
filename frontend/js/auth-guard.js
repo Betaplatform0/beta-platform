@@ -2,31 +2,45 @@ import { auth, db, doc, getDoc, onAuthStateChanged, signOut } from "./firebase-c
 
 export function guardPage(requiredRoles) {
   return new Promise((resolve) => {
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        window.location.replace("index.html");
-        return;
-      }
-      const snap = await getDoc(doc(db, "users", user.uid));
-      if (!snap.exists()) {
-        await signOut(auth);
-        window.location.replace("index.html");
-        return;
-      }
-      const data = snap.data();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      try {
+        if (!user) {
+          window.location.replace("index.html");
+          return;
+        }
 
-      if (data.status !== "active") {
-        await signOut(auth);
+        const snap = await getDoc(doc(db, "users", user.uid));
+
+        if (!snap.exists()) {
+          unsubscribe();
+          await signOut(auth);
+          window.location.replace("index.html");
+          return;
+        }
+
+        const data = snap.data();
+
+        if (data.status !== "active") {
+          unsubscribe();
+          await signOut(auth);
+          window.location.replace("index.html");
+          return;
+        }
+
+        if (requiredRoles && !requiredRoles.includes(data.role)) {
+          unsubscribe();
+          window.location.replace(data.role === "student" ? "student.html" : "dashboard.html");
+          return;
+        }
+
+        unsubscribe();
+        resolve({ uid: user.uid, ...data });
+      } catch (error) {
+        console.error("خطأ في التحقق من الجلسة");
+        unsubscribe();
+        await signOut(auth).catch(() => {});
         window.location.replace("index.html");
-        return;
       }
-
-      if (requiredRoles && !requiredRoles.includes(data.role)) {
-        window.location.replace(data.role === "student" ? "student.html" : "dashboard.html");
-        return;
-      }
-
-      resolve({ uid: user.uid, idToken: await user.getIdToken(), ...data });
     });
   });
 }
@@ -36,8 +50,6 @@ export async function logout() {
   window.location.replace("index.html");
 }
 
-// إعادة التحقق من الجلسة لو المستخدم رجع للصفحة بزرار الرجوع
-// (بعض المتصفحات بتوري نسخة محفوظة "bfcache" من غير ما تعيد تحميل الصفحة فعليًا)
 window.addEventListener("pageshow", (event) => {
   if (event.persisted) {
     if (!auth.currentUser) {
