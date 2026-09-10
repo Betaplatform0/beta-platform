@@ -1,10 +1,11 @@
-import { BACKEND_URL } from "./firebase-config.js";
+import { BACKEND_URL, auth } from "./firebase-config.js";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
 let pdfDoc = null;
 let currentPage = 1;
 let currentScale = 1;
+let renderTask = null;
 
 const overlay = document.getElementById("pdfOverlay");
 const canvas = document.getElementById("pdfCanvas");
@@ -44,8 +45,16 @@ export async function openPdfViewer(fileId, user) {
   showContentAgain();
 
   try {
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) {
+      alert("انتهت الجلسة، سجّل دخولك تاني.");
+      closeViewer();
+      return;
+    }
+    const token = await firebaseUser.getIdToken();
+
     const res = await fetch(`${BACKEND_URL}/api/files/${fileId}/stream`, {
-      headers: { Authorization: `Bearer ${user.idToken}` },
+      headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -72,19 +81,31 @@ export async function openPdfViewer(fileId, user) {
 
     renderPage(currentPage);
   } catch (err) {
-    console.error(err);
+    console.error("تعذر تحميل الملف");
     alert("تعذر تحميل الملف.");
     closeViewer();
   }
 }
 
+// إصلاح ثغرة XSS: استخدام textContent بدل innerHTML عند بناء العلامة المائية
 function buildWatermark(user) {
-  const label = `${user.fullName} - ${user.seatNumber}`;
-  const cells = Array.from({ length: 40 }, () => `<span>${label}</span>`).join("");
-  watermarkLayer.innerHTML = cells;
+  const label = `${user.fullName || ""} - ${user.seatNumber || ""}`;
+  watermarkLayer.replaceChildren();
+  for (let i = 0; i < 40; i++) {
+    const span = document.createElement("span");
+    span.textContent = label;
+    watermarkLayer.appendChild(span);
+  }
 }
 
+// منع تعارض الرسم عند الضغط بسرعة على التالي/السابق/الزوم
 async function renderPage(num) {
+  if (!pdfDoc) return;
+
+  if (renderTask) {
+    renderTask.cancel();
+  }
+
   const page = await pdfDoc.getPage(num);
   const viewport = page.getViewport({ scale: currentScale });
 
@@ -99,7 +120,17 @@ async function renderPage(num) {
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
 
-  await page.render({ canvasContext: ctx, viewport }).promise;
+  renderTask = page.render({ canvasContext: ctx, viewport });
+
+  try {
+    await renderTask.promise;
+  } catch (err) {
+    if (err?.name !== "RenderingCancelledException") {
+      console.error("تعذر رسم الصفحة");
+    }
+    return;
+  }
+
   pageInfo.textContent = `صفحة ${num} / ${pdfDoc.numPages}`;
 }
 
