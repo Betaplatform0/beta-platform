@@ -1,5 +1,5 @@
 import { guardPage } from "./auth-guard.js";
-import { BACKEND_URL } from "./firebase-config.js";
+import { api, escapeHtml } from "./api-client.js";
 import { initTheme, initLang } from "./theme-lang.js";
 
 let currentUser = null;
@@ -12,21 +12,6 @@ let notifStudentsCache = [];
 
 const roleLabel = { owner: "Owner", admin: "Admin", student: "Student" };
 const statusLabel = { pending: "قيد المراجعة", active: "مفعّل", disabled: "معطّل" };
-
-function api(pathname, options = {}) {
-  return fetch(`${BACKEND_URL}${pathname}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${currentUser.idToken}`,
-      ...(options.headers || {}),
-    },
-  }).then(async (r) => {
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(data.message || "حدث خطأ");
-    return data;
-  });
-}
 
 function parseUserAgent(ua) {
   if (!ua) return { browser: "غير معروف", os: "غير معروف" };
@@ -99,7 +84,7 @@ async function loadStats() {
   document.getElementById("statBandwidth").textContent = `${formatBytes(s.totalBandwidthBytes)} (تراكمي)`;
 }
 
-// ------------ الحسابات (مع ترقيم صفحات) ------------
+// ------------ الحسابات (مع ترقيم صفحات + escapeHtml) ------------
 async function loadAccounts() {
   const query = accountsCursor ? `?limit=50&cursor=${accountsCursor}` : "?limit=50";
   const data = await api(`/api/admin/accounts${query}`);
@@ -124,9 +109,9 @@ function renderAccountsTable() {
 
       return `<tr>
         <td>${a.role !== "owner" ? `<input type="checkbox" class="account-check" value="${a.id}" />` : ""}</td>
-        <td>${a.fullName || "-"}</td>
-        <td>${a.phone || "-"}</td>
-        <td>${a.seatNumber || "-"}</td>
+        <td>${escapeHtml(a.fullName || "-")}</td>
+        <td>${escapeHtml(a.phone || "-")}</td>
+        <td>${escapeHtml(a.seatNumber || "-")}</td>
         <td><span class="badge ${a.role}">${roleLabel[a.role] || a.role}</span></td>
         <td><span class="badge ${a.status}">${statusLabel[a.status] || a.status}</span></td>
         <td style="display:flex;gap:6px;flex-wrap:wrap;">${actions.join("")}</td>
@@ -197,7 +182,7 @@ window.betaResetPassword = async (id) => {
   }
 };
 
-// ------------ الفولدرات (شجرية) ------------
+// ------------ الفولدرات (شجرية + escapeHtml) ------------
 async function fetchAllFolders() {
   const { folders } = await api("/api/admin/folders");
   foldersCache = folders;
@@ -210,7 +195,7 @@ function currentParentId() {
 function renderBreadcrumb() {
   const bc = document.getElementById("folderBreadcrumb");
   const rootLabel = `<span class="breadcrumb-item" data-index="-1" style="cursor:pointer;color:var(--primary);">📁 الرئيسية</span>`;
-  const items = folderStack.map((f, i) => `<span> / </span><span class="breadcrumb-item" data-index="${i}" style="cursor:pointer;color:var(--primary);">${f.name}</span>`);
+  const items = folderStack.map((f, i) => `<span> / </span><span class="breadcrumb-item" data-index="${i}" style="cursor:pointer;color:var(--primary);">${escapeHtml(f.name)}</span>`);
   bc.innerHTML = rootLabel + items.join("");
   bc.querySelectorAll(".breadcrumb-item").forEach((el) => {
     el.addEventListener("click", () => {
@@ -236,10 +221,10 @@ function renderFolderView() {
     .map(
       (f) => `<div class="folder-card" data-id="${f.id}">
         <div class="icon">${f.type === "public" ? "🌐" : "🔒"}</div>
-        <div>${f.name}</div>
+        <div>${escapeHtml(f.name)}</div>
         <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">${f.type === "public" ? "عام" : "خاص"}</div>
         <div style="margin-top:10px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
-          <button class="btn small secondary" data-action="rename" data-id="${f.id}" data-name="${f.name.replace(/"/g, "&quot;")}">تعديل الاسم</button>
+          <button class="btn small secondary" data-action="rename" data-id="${f.id}" data-name="${escapeHtml(f.name)}">تعديل الاسم</button>
           <button class="btn small secondary" data-action="toggle" data-id="${f.id}" data-type="${f.type}">${f.type === "public" ? "اجعله خاص" : "اجعله عام"}</button>
           <button class="btn small danger" data-action="delete" data-id="${f.id}">حذف</button>
         </div>
@@ -323,12 +308,12 @@ document.getElementById("addFolderBtn").addEventListener("click", async () => {
   }
 });
 
-// ------------ الملفات (رفع متعدد + إعادة تسمية + حذف) ------------
+// ------------ الملفات (رفع متعدد + إعادة تسمية + حذف + escapeHtml) ------------
 async function loadFilesTab() {
   if (foldersCache.length === 0) await fetchAllFolders();
   const select = document.getElementById("uploadFolderSelect");
   select.innerHTML = foldersCache
-    .map((f) => `<option value="${f.id}">${folderPathLabel(f)} (${f.type === "public" ? "عام" : "خاص"})</option>`)
+    .map((f) => `<option value="${f.id}">${escapeHtml(folderPathLabel(f))} (${f.type === "public" ? "عام" : "خاص"})</option>`)
     .join("");
   if (foldersCache[0]) loadFilesForFolder(select.value);
   select.onchange = () => loadFilesForFolder(select.value);
@@ -344,10 +329,10 @@ async function loadFilesForFolder(folderId) {
       (data.files || [])
         .map(
           (f) => `<div class="file-row">
-            <span>📄 ${f.displayName}</span>
+            <span>📄 ${escapeHtml(f.displayName)}</span>
             <span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
               ${(f.sizeBytes / 1024 / 1024).toFixed(2)} MB
-              <button class="btn small secondary" data-action="rename-file" data-id="${f.id}" data-name="${f.displayName.replace(/"/g, "&quot;")}" data-folder="${folderId}">إعادة تسمية</button>
+              <button class="btn small secondary" data-action="rename-file" data-id="${f.id}" data-name="${escapeHtml(f.displayName)}" data-folder="${folderId}">إعادة تسمية</button>
               <button class="btn small danger" data-action="delete-file" data-id="${f.id}" data-folder="${folderId}">حذف</button>
             </span>
           </div>`
@@ -379,7 +364,7 @@ async function loadFilesForFolder(folderId) {
       });
     });
   } catch (err) {
-    list.innerHTML = `<p style='color:var(--danger)'>تعذر جلب الملفات: ${err.message}</p>`;
+    list.innerHTML = `<p style='color:var(--danger)'>تعذر جلب الملفات: ${escapeHtml(err.message)}</p>`;
   }
 }
 
@@ -390,6 +375,15 @@ document.getElementById("uploadBtn").addEventListener("click", async () => {
   if (!folderId) { msg.textContent = "أنشئ فولدر أولًا من تبويب الفولدرات."; msg.className = "msg error"; return; }
   if (!fileInput.files.length) { msg.textContent = "اختر ملفًا واحدًا على الأقل."; msg.className = "msg error"; return; }
 
+  // تحقق أولي في الواجهة فقط (تحسين تجربة استخدام، وليس حماية حقيقية - التحقق الحقيقي في الباك اند)
+  for (const file of fileInput.files) {
+    if (file.type !== "application/pdf") {
+      msg.textContent = `الملف "${file.name}" ليس PDF.`;
+      msg.className = "msg error";
+      return;
+    }
+  }
+
   const formData = new FormData();
   for (const file of fileInput.files) {
     formData.append("files", file);
@@ -399,13 +393,7 @@ document.getElementById("uploadBtn").addEventListener("click", async () => {
   msg.textContent = `جارٍ رفع ${fileInput.files.length} ملف...`;
   msg.className = "msg";
   try {
-    const res = await fetch(`${BACKEND_URL}/api/upload`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${currentUser.idToken}` },
-      body: formData,
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message);
+    const data = await api("/api/upload", { method: "POST", body: formData });
     msg.textContent = `تم رفع ${data.uploadedCount} ملف بنجاح.` + (data.failed?.length ? ` فشل: ${data.failed.join(", ")}` : "");
     msg.className = "msg success";
     fileInput.value = "";
@@ -416,7 +404,7 @@ document.getElementById("uploadBtn").addEventListener("click", async () => {
   }
 });
 
-// ------------ الصلاحيات ------------
+// ------------ الصلاحيات (escapeHtml) ------------
 async function loadPermissionsTab() {
   if (foldersCache.length === 0) await fetchAllFolders();
   const privateFolders = foldersCache.filter((f) => f.type !== "public");
@@ -427,7 +415,7 @@ async function loadPermissionsTab() {
   const searchInput = document.getElementById("permStudentSearch");
 
   function renderOptions(list) {
-    select.innerHTML = list.map((s) => `<option value="${s.id}">${s.fullName} (${s.phone})</option>`).join("");
+    select.innerHTML = list.map((s) => `<option value="${s.id}">${escapeHtml(s.fullName)} (${escapeHtml(s.phone)})</option>`).join("");
   }
 
   renderOptions(students);
@@ -455,7 +443,7 @@ async function loadPermissionsTab() {
       .map(
         (f) => `<label style="display:flex;align-items:center;gap:8px;padding:8px 0;">
           <input type="checkbox" value="${f.id}" ${allowedFolders.includes(f.id) ? "checked" : ""} />
-          ${folderPathLabel(f)}
+          ${escapeHtml(folderPathLabel(f))}
         </label>`
       )
       .join("");
@@ -479,7 +467,7 @@ async function loadPermissionsTab() {
   };
 }
 
-// ------------ الأجهزة ------------
+// ------------ الأجهزة (escapeHtml) ------------
 async function loadDevices() {
   const { devices } = await api("/api/admin/devices");
   const tbody = document.getElementById("devicesTable");
@@ -488,7 +476,7 @@ async function loadDevices() {
       const info = parseUserAgent(d.userAgent);
       const time = d.linkedAt && d.linkedAt._seconds ? new Date(d.linkedAt._seconds * 1000).toLocaleString("ar-EG") : "-";
       return `<tr>
-        <td>${d.userName}</td>
+        <td>${escapeHtml(d.userName)}</td>
         <td>${info.os}</td>
         <td>${info.browser}</td>
         <td>${time}</td>
@@ -513,7 +501,7 @@ window.betaResetDevice = async (userId) => {
   }
 };
 
-// ------------ إرسال الإشعارات ------------
+// ------------ إرسال الإشعارات (escapeHtml) ------------
 async function loadNotificationsTab() {
   const typeSelect = document.getElementById("notifTargetType");
   const studentField = document.getElementById("notifStudentField");
@@ -531,7 +519,7 @@ async function loadNotificationsTab() {
   const searchInput = document.getElementById("notifStudentSearch");
 
   function renderOptions(list) {
-    select.innerHTML = list.map((s) => `<option value="${s.id}">${s.fullName} (${s.phone})</option>`).join("");
+    select.innerHTML = list.map((s) => `<option value="${s.id}">${escapeHtml(s.fullName)} (${escapeHtml(s.phone)})</option>`).join("");
   }
   renderOptions(notifStudentsCache);
 
@@ -562,7 +550,7 @@ async function loadSentNotifications() {
         const targetLabel = n.targetType === "all" ? "🌐 كل الطلاب" : "👤 طالب معين";
         return `<div class="file-row" data-id="${n.id}">
           <span style="flex:1;">
-            <div style="font-weight:700;">${n.title}</div>
+            <div style="font-weight:700;">${escapeHtml(n.title)}</div>
             <div style="font-size:0.8rem;color:var(--muted);">${targetLabel} · ${time}</div>
           </span>
           <button class="btn small danger" data-action="delete-notif" data-id="${n.id}">حذف</button>
@@ -582,7 +570,7 @@ async function loadSentNotifications() {
       });
     });
   } catch (err) {
-    container.innerHTML = `<p style='color:var(--danger)'>تعذر تحميل الإشعارات: ${err.message}</p>`;
+    container.innerHTML = `<p style='color:var(--danger)'>تعذر تحميل الإشعارات: ${escapeHtml(err.message)}</p>`;
   }
 }
 
